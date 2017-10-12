@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="typo_large">18sp</dimen>
+    <dimen name="typo_medium">14sp</dimen>
+    <dimen name="typo_small">12sp</dimen>
+
+</resources>
