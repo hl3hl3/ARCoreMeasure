@@ -19,11 +19,11 @@ android {
     compileSdkVersion 25
     buildToolsVersion "25.0.0"
     defaultConfig {
-        applicationId 'com.hl3hl3.arcoremeasure'
+        applicationId 'com.hl3hl3.arcoremeasureforall'
         minSdkVersion 24
         targetSdkVersion 25
-        versionCode 5
-        versionName "1.2"
+        versionCode 6
+        versionName "1.2.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {

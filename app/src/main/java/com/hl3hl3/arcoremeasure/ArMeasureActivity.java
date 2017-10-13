@@ -65,8 +65,6 @@ public class ArMeasureActivity extends AppCompatActivity {
     private static final String ASSET_NAME_CUBE = "cube_green.png";
     private static final String ASSET_NAME_CUBE_SELECTED = "cube_cyan.png";
 
-    private static final String LINK_ARCORE_SERVICE = "https://github.com/google-ar/arcore-android-sdk/releases/download/sdk-preview/arcore-preview.apk";
-    private static final String LINK_INFO = "https://developers.google.com/ar/develop/java/getting-started";
     private static final String NEED_ALERT = "needAlert";
     private static final int MAX_CUBE_COUNT = 16;
 
@@ -296,38 +294,6 @@ public class ArMeasureActivity extends AppCompatActivity {
 
     private void showInitAlert(){
         final View view = View.inflate(this, R.layout.alert, null);
-
-        View.OnClickListener onClickDownload = new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                try {
-                    Uri uri = Uri.parse(LINK_ARCORE_SERVICE);
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    startActivity(intent);
-                }catch(Exception e){
-                    log(e);
-                }
-            }
-        };
-
-        View.OnClickListener onClickInfo = new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                try {
-                    Uri uri = Uri.parse(LINK_INFO);
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    startActivity(intent);
-                }catch(Exception e){
-                    log(e);
-                }
-            }
-        };
-
-        view.findViewById(R.id.iv_arrow_download).setOnClickListener(onClickDownload);
-        view.findViewById(R.id.tv_download).setOnClickListener(onClickDownload);
-
-        view.findViewById(R.id.iv_arrow_info).setOnClickListener(onClickInfo);
-        view.findViewById(R.id.tv_info).setOnClickListener(onClickInfo);
 
         view.findViewById(R.id.tv_dontshow).setOnClickListener(new View.OnClickListener(){
             @Override

@@ -24,21 +24,58 @@
         style="@style/line"
         android:layout_below="@+id/tv_support" />
 
+
+
+
+
+
+    <TextView
+        android:id="@+id/tv_download_for_all"
+        style="@style/label"
+        android:paddingBottom="0dp"
+        android:paddingTop="16dp"
+        android:text="@string/alert_download_for_all"
+        android:layout_below="@+id/iv_line_message"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:id="@+id/tv_download_link_for_all"
+        style="@style/label.small"
+        android:layout_below="@+id/tv_download_for_all"
+        android:paddingBottom="4dp"
+        android:paddingTop="0dp"
+        android:text="@string/alert_download_link_for_all" />
+
+
+    <TextView
+        android:id="@+id/tv_download_for_all_more_info"
+        style="@style/label"
+        android:paddingBottom="0dp"
+        android:paddingTop="4dp"
+        android:text="@string/alert_info"
+        android:layout_below="@+id/tv_download_link_for_all"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:id="@+id/tv_download_link_for_all_info"
+        style="@style/label.small"
+        android:layout_below="@+id/tv_download_for_all_more_info"
+        android:paddingBottom="16dp"
+        android:paddingRight="0dp"
+        android:paddingTop="0dp"
+        android:text="@string/alert_download_link_for_all_info" />
+
     <ImageView
-        android:id="@+id/iv_arrow_download"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/tv_download_link"
-        android:layout_alignParentRight="true"
-        android:layout_alignTop="@+id/tv_download"
-        android:paddingRight="16dp"
-        android:src="@drawable/ic_action_arrow" />
+        android:id="@+id/iv_line_download_for_all"
+        style="@style/line"
+        android:layout_below="@+id/tv_download_link_for_all_info" />
+
+
 
     <TextView
         android:id="@+id/tv_download"
         style="@style/label"
-        android:layout_below="@+id/iv_line_message"
-        android:layout_toLeftOf="@+id/iv_arrow_download"
+        android:layout_below="@+id/iv_line_download_for_all"
         android:paddingBottom="0dp"
         android:paddingRight="0dp"
         android:paddingTop="16dp"
@@ -48,45 +85,24 @@
         android:id="@+id/tv_download_link"
         style="@style/label.small"
         android:layout_below="@+id/tv_download"
-        android:layout_toLeftOf="@+id/iv_arrow_download"
-        android:paddingBottom="16dp"
-        android:paddingRight="0dp"
+        android:paddingBottom="4dp"
         android:paddingTop="0dp"
         android:text="@string/alert_download_link" />
-
-    <ImageView
-        android:id="@+id/iv_line_download"
-        style="@style/line"
-        android:layout_below="@+id/tv_download_link" />
-
-
-    <ImageView
-        android:id="@+id/iv_arrow_info"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/tv_info_link"
-        android:layout_alignParentRight="true"
-        android:layout_alignTop="@+id/tv_info"
-        android:paddingRight="16dp"
-        android:src="@drawable/ic_action_arrow" />
 
     <TextView
         android:id="@+id/tv_info"
         style="@style/label"
-        android:layout_below="@+id/iv_line_download"
-        android:layout_toLeftOf="@+id/iv_arrow_download"
+        android:layout_below="@+id/tv_download_link"
         android:paddingBottom="0dp"
         android:paddingRight="0dp"
-        android:paddingTop="16dp"
+        android:paddingTop="4dp"
         android:text="@string/alert_info" />
 
     <TextView
         android:id="@+id/tv_info_link"
         style="@style/label.small"
         android:layout_below="@+id/tv_info"
-        android:layout_toLeftOf="@+id/iv_arrow_download"
         android:paddingBottom="16dp"
-        android:paddingRight="0dp"
         android:paddingTop="0dp"
         android:text="@string/alert_info_link" />
 
