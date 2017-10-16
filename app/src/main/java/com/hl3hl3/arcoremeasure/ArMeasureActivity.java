@@ -670,11 +670,6 @@ public class ArMeasureActivity extends AppCompatActivity {
                                     // now touching point index = smallestIndex
                                     nowTouchingPointIndex = smallestIndex;
                                 }else {
-                                    if(mTouches.size() == 0){
-                                        nowTouchingPointIndex = 0;
-                                    }else {
-                                        nowTouchingPointIndex = mTouches.size() - 1;
-                                    }
                                     // Cap the number of objects created. This avoids overloading both the
                                     // rendering system and ARCore.
                                     if (mTouches.size() >= 16) {
@@ -694,6 +689,13 @@ public class ArMeasureActivity extends AppCompatActivity {
 
                                     mShowingTapPointX.add(tap.getX());
                                     mShowingTapPointY.add(tap.getY());
+
+                                    if(mTouches.size() == 0){
+                                        nowTouchingPointIndex = DEFAULT_VALUE;
+                                    }else {
+                                        nowTouchingPointIndex = mTouches.size() - 1;
+                                    }
+
 //                                    log(TAG, "tap point[" + (mShowingTapPointX.size() - 1) + "] at (" + tap.getX() + ", " + tap.getY() + ")");
                                     // Hits are sorted by depth. Consider only closest hit on a plane.
                                 }
