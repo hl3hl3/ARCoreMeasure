@@ -231,6 +231,9 @@ public class ArMeasureActivity extends AppCompatActivity {
 
     }
 
+    private void toast(int stringResId){
+        Toast.makeText(this, stringResId, Toast.LENGTH_SHORT).show();
+    }
     private boolean isVerticalMode = false;
     private PopupWindow popupWindow;
     private PopupWindow getPopupWindow() {
@@ -250,6 +253,27 @@ public class ArMeasureActivity extends AppCompatActivity {
         ListView listViewSort = new ListView(this);
         // set our adapter and pass our pop up window contents
         listViewSort.setAdapter(adapter);
+        listViewSort.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                switch (position){
+                    case 3:// move vertical axis
+                        toast(R.string.action_4_toast);
+                        break;
+                    case 0:// delete
+                        toast(R.string.action_1_toast);
+                        break;
+                    case 1:// set as first
+                        toast(R.string.action_2_toast);
+                        break;
+                    case 2:// move horizontal axis
+                    default:
+                        toast(R.string.action_3_toast);
+                        break;
+                }
+                return true;
+            }
+        });
         // set on item selected
         listViewSort.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -612,11 +636,6 @@ public class ArMeasureActivity extends AppCompatActivity {
                                     // now touching point index = smallestIndex
                                     nowTouchingPointIndex = smallestIndex;
                                 }else {
-                                    if(mTouches.size() == 0){
-                                        nowTouchingPointIndex = 0;
-                                    }else {
-                                        nowTouchingPointIndex = mTouches.size() - 1;
-                                    }
                                     // Cap the number of objects created. This avoids overloading both the
                                     // rendering system and ARCore.
                                     if (mTouches.size() >= 16) {
@@ -636,6 +655,13 @@ public class ArMeasureActivity extends AppCompatActivity {
 
                                     mShowingTapPointX.add(tap.getX());
                                     mShowingTapPointY.add(tap.getY());
+
+                                    if(mTouches.size() == 0){
+                                        nowTouchingPointIndex = DEFAULT_VALUE;
+                                    }else {
+                                        nowTouchingPointIndex = mTouches.size() - 1;
+                                    }
+
 //                                    log(TAG, "tap point[" + (mShowingTapPointX.size() - 1) + "] at (" + tap.getX() + ", " + tap.getY() + ")");
                                     // Hits are sorted by depth. Consider only closest hit on a plane.
                                 }

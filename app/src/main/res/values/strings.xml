@@ -25,4 +25,9 @@
     <string name="action_3">Horizontal move</string>
     <string name="action_4">Vertical move</string>
 
+    <string name="action_1_toast">Remove this cube.</string>
+    <string name="action_2_toast">Reorder and set this cube to the first.</string>
+    <string name="action_3_toast">Move on x and z axis.</string>
+    <string name="action_4_toast">Move on y axis.</string>
+
 </resources>
