@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
@@ -11,125 +11,128 @@
         android:paddingTop="24dp"
         android:text="@string/alert_message" />
 
-    <TextView
-        android:id="@+id/tv_support"
-        style="@style/label.small"
+    <ScrollView
+        android:id="@+id/sv_alertcontent"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_above="@+id/tv_ok"
         android:layout_below="@+id/tv_message"
-        android:paddingBottom="16dp"
-        android:text="@string/alert_support"
-        android:textColor="@color/gray" />
+        android:layout_weight="1">
 
-    <ImageView
-        android:id="@+id/iv_line_message"
-        style="@style/line"
-        android:layout_below="@+id/tv_support" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
 
+            <TextView
+                android:id="@+id/tv_support"
+                style="@style/label.small"
+                android:paddingBottom="16dp"
+                android:text="@string/alert_support"
+                android:textColor="@color/gray" />
 
+            <ImageView
+                android:id="@+id/iv_line_message"
+                style="@style/line" />
 
+            <TextView
+                android:id="@+id/tv_download_for_all"
+                style="@style/label"
+                android:layout_alignParentStart="true"
+                android:layout_below="@+id/iv_line_message"
+                android:paddingBottom="0dp"
+                android:paddingTop="16dp"
+                android:text="@string/alert_download_for_all" />
 
+            <TextView
+                android:id="@+id/tv_download_link_for_all"
+                style="@style/label.small"
+                android:layout_below="@+id/tv_download_for_all"
+                android:paddingBottom="4dp"
+                android:paddingTop="0dp"
+                android:text="@string/alert_download_link_for_all" />
 
-    <TextView
-        android:id="@+id/tv_download_for_all"
-        style="@style/label"
-        android:paddingBottom="0dp"
-        android:paddingTop="16dp"
-        android:text="@string/alert_download_for_all"
-        android:layout_below="@+id/iv_line_message"
-        android:layout_alignParentStart="true" />
+            <TextView
+                android:id="@+id/tv_download_for_all_more_info"
+                style="@style/label"
+                android:layout_alignParentStart="true"
+                android:layout_below="@+id/tv_download_link_for_all"
+                android:paddingBottom="0dp"
+                android:paddingTop="4dp"
+                android:text="@string/alert_info" />
 
-    <TextView
-        android:id="@+id/tv_download_link_for_all"
-        style="@style/label.small"
-        android:layout_below="@+id/tv_download_for_all"
-        android:paddingBottom="4dp"
-        android:paddingTop="0dp"
-        android:text="@string/alert_download_link_for_all" />
+            <TextView
+                android:id="@+id/tv_download_link_for_all_info"
+                style="@style/label.small"
+                android:layout_below="@+id/tv_download_for_all_more_info"
+                android:paddingBottom="16dp"
+                android:paddingRight="0dp"
+                android:paddingTop="0dp"
+                android:text="@string/alert_download_link_for_all_info" />
 
+            <ImageView
+                android:id="@+id/iv_line_download_for_all"
+                style="@style/line"
+                android:layout_below="@+id/tv_download_link_for_all_info" />
 
-    <TextView
-        android:id="@+id/tv_download_for_all_more_info"
-        style="@style/label"
-        android:paddingBottom="0dp"
-        android:paddingTop="4dp"
-        android:text="@string/alert_info"
-        android:layout_below="@+id/tv_download_link_for_all"
-        android:layout_alignParentStart="true" />
+            <TextView
+                android:id="@+id/tv_download"
+                style="@style/label"
+                android:layout_below="@+id/iv_line_download_for_all"
+                android:paddingBottom="0dp"
+                android:paddingRight="0dp"
+                android:paddingTop="16dp"
+                android:text="@string/alert_download" />
 
-    <TextView
-        android:id="@+id/tv_download_link_for_all_info"
-        style="@style/label.small"
-        android:layout_below="@+id/tv_download_for_all_more_info"
-        android:paddingBottom="16dp"
-        android:paddingRight="0dp"
-        android:paddingTop="0dp"
-        android:text="@string/alert_download_link_for_all_info" />
+            <TextView
+                android:id="@+id/tv_download_link"
+                style="@style/label.small"
+                android:layout_below="@+id/tv_download"
+                android:paddingBottom="4dp"
+                android:paddingTop="0dp"
+                android:text="@string/alert_download_link" />
 
-    <ImageView
-        android:id="@+id/iv_line_download_for_all"
-        style="@style/line"
-        android:layout_below="@+id/tv_download_link_for_all_info" />
+            <TextView
+                android:id="@+id/tv_info"
+                style="@style/label"
+                android:layout_below="@+id/tv_download_link"
+                android:paddingBottom="0dp"
+                android:paddingRight="0dp"
+                android:paddingTop="4dp"
+                android:text="@string/alert_info" />
 
+            <TextView
+                android:id="@+id/tv_info_link"
+                style="@style/label.small"
+                android:layout_below="@+id/tv_info"
+                android:paddingBottom="16dp"
+                android:paddingTop="0dp"
+                android:text="@string/alert_info_link" />
 
+            <ImageView
+                android:id="@+id/iv_line_info"
+                style="@style/line"
+                android:layout_below="@+id/tv_info_link" />
 
-    <TextView
-        android:id="@+id/tv_download"
-        style="@style/label"
-        android:layout_below="@+id/iv_line_download_for_all"
-        android:paddingBottom="0dp"
-        android:paddingRight="0dp"
-        android:paddingTop="16dp"
-        android:text="@string/alert_download" />
-
-    <TextView
-        android:id="@+id/tv_download_link"
-        style="@style/label.small"
-        android:layout_below="@+id/tv_download"
-        android:paddingBottom="4dp"
-        android:paddingTop="0dp"
-        android:text="@string/alert_download_link" />
-
-    <TextView
-        android:id="@+id/tv_info"
-        style="@style/label"
-        android:layout_below="@+id/tv_download_link"
-        android:paddingBottom="0dp"
-        android:paddingRight="0dp"
-        android:paddingTop="4dp"
-        android:text="@string/alert_info" />
-
-    <TextView
-        android:id="@+id/tv_info_link"
-        style="@style/label.small"
-        android:layout_below="@+id/tv_info"
-        android:paddingBottom="16dp"
-        android:paddingTop="0dp"
-        android:text="@string/alert_info_link" />
-
-    <ImageView
-        android:id="@+id/iv_line_info"
-        style="@style/line"
-        android:layout_below="@+id/tv_info_link" />
-
-    <TextView
-        android:id="@+id/tv_dontshow"
-        style="@style/label.small"
-        android:layout_below="@+id/iv_line_info"
-        android:drawableLeft="@drawable/selector_cb"
-        android:drawablePadding="8dp"
-        android:paddingBottom="16dp"
-        android:paddingLeft="12dp"
-        android:paddingTop="16dp"
-        android:text="@string/alert_do_not_show"
-        android:textSize="@dimen/typo_medium" />
+            <TextView
+                android:id="@+id/tv_dontshow"
+                style="@style/label.small"
+                android:drawableLeft="@drawable/selector_cb"
+                android:drawablePadding="8dp"
+                android:paddingBottom="16dp"
+                android:paddingLeft="12dp"
+                android:paddingTop="16dp"
+                android:text="@string/alert_do_not_show"
+                android:textSize="@dimen/typo_medium" />
+        </LinearLayout>
+    </ScrollView>
 
     <TextView
         android:id="@+id/tv_ok"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/tv_dontshow"
-        android:layout_centerHorizontal="true"
-        android:gravity="center"
+        android:layout_gravity="center_horizontal"
         android:paddingBottom="24dp"
         android:paddingLeft="48dp"
         android:paddingRight="48dp"
@@ -138,4 +141,4 @@
         android:textColor="@color/black"
         android:textSize="@dimen/typo_large" />
 
-</RelativeLayout>
+</LinearLayout>
