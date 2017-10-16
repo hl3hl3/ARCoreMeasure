@@ -233,6 +233,9 @@ public class ArMeasureActivity extends AppCompatActivity {
 
     }
 
+    private void toast(int stringResId){
+        Toast.makeText(this, stringResId, Toast.LENGTH_SHORT).show();
+    }
     private boolean isVerticalMode = false;
     private PopupWindow popupWindow;
     private PopupWindow getPopupWindow() {
@@ -252,6 +255,27 @@ public class ArMeasureActivity extends AppCompatActivity {
         ListView listViewSort = new ListView(this);
         // set our adapter and pass our pop up window contents
         listViewSort.setAdapter(adapter);
+        listViewSort.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                switch (position){
+                    case 3:// move vertical axis
+                        toast(R.string.action_4_toast);
+                        break;
+                    case 0:// delete
+                        toast(R.string.action_1_toast);
+                        break;
+                    case 1:// set as first
+                        toast(R.string.action_2_toast);
+                        break;
+                    case 2:// move horizontal axis
+                    default:
+                        toast(R.string.action_3_toast);
+                        break;
+                }
+                return true;
+            }
+        });
         // set on item selected
         listViewSort.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override

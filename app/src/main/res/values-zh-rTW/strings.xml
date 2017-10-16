@@ -22,4 +22,9 @@
     <string name="action_3">水平移動</string>
     <string name="action_4">垂直移動</string>
 
+    <string name="action_1_toast">刪除這顆方塊</string>
+    <string name="action_2_toast">重新排序並將這顆方塊設為起點</string>
+    <string name="action_3_toast">在 x 和 z 軸上移動</string>
+    <string name="action_4_toast">在 y 軸上移動</string>
+
 </resources>
