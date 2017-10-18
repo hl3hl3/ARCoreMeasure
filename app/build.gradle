@@ -22,8 +22,8 @@ android {
         applicationId 'com.hl3hl3.arcoremeasureforall'
         minSdkVersion 24
         targetSdkVersion 25
-        versionCode 8
-        versionName "1.3.2"
+        versionCode 10
+        versionName "1.4.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
