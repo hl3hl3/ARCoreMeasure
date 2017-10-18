@@ -108,6 +108,7 @@ public class ArMeasureActivity extends AppCompatActivity {
 
     // Tap handling and UI.
     private ArrayBlockingQueue<MotionEvent> mQueuedSingleTaps = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
+    private ArrayBlockingQueue<MotionEvent> mQueuedLongPress = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
     private ArrayList<PlaneAttachment> mTouches = new ArrayList<>();
     private ArrayList<Float> mShowingTapPointX = new ArrayList<>();
     private ArrayList<Float> mShowingTapPointY = new ArrayList<>();
@@ -163,6 +164,11 @@ public class ArMeasureActivity extends AppCompatActivity {
             mQueuedSingleTaps.offer(e);
 //            log(TAG, "onSingleTapUp, e=" + e.getRawX() + ", " + e.getRawY());
             return true;
+        }
+
+        @Override
+        public void onLongPress(MotionEvent e) {
+            mQueuedLongPress.offer(e);
         }
 
         @Override
@@ -823,8 +829,19 @@ public class ArMeasureActivity extends AppCompatActivity {
         }
 
         private void checkIfHit(ObjectRenderer renderer, int cubeIndex){
-            boolean isHit = isMVPMatrixHitMotionEvent(renderer.getModelViewProjectionMatrix(), mQueuedSingleTaps.peek());
-            if(isHit){
+            if(isMVPMatrixHitMotionEvent(renderer.getModelViewProjectionMatrix(), mQueuedLongPress.peek())){
+                // long press hit a cube, show context menu for the cube
+                nowTouchingPointIndex = cubeIndex;
+                mQueuedLongPress.poll();
+                showMoreAction();
+                showCubeStatus();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        fab.performClick();
+                    }
+                });
+            }else if(isMVPMatrixHitMotionEvent(renderer.getModelViewProjectionMatrix(), mQueuedSingleTaps.peek())){
                 nowTouchingPointIndex = cubeIndex;
                 mQueuedSingleTaps.poll();
                 showMoreAction();
