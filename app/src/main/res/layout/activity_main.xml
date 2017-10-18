@@ -23,7 +23,18 @@
         android:id="@+id/fl_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@+id/tv_result_label"></FrameLayout>
+        android:layout_above="@+id/tv_result_label"
+        />
+
+    <!-- for test -->
+    <!--<com.hl3hl3.arcoremeasure.OverlayView-->
+        <!--android:id="@+id/overlay_for_test"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="match_parent"-->
+        <!--android:layout_alignBottom="@+id/fl_content"-->
+        <!--android:layout_alignLeft="@+id/fl_content"-->
+        <!--android:layout_alignRight="@+id/fl_content"-->
+        <!--android:layout_alignTop="@+id/fl_content" />-->
 
     <TextView
         android:id="@+id/tv_result_label"
