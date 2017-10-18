@@ -3,11 +3,10 @@ package com.hl3hl3.arcoremeasure;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -43,6 +42,7 @@ import com.google.ar.core.examples.java.helloar.rendering.ObjectRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.PlaneAttachment;
 import com.google.ar.core.examples.java.helloar.rendering.PlaneRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.PointCloudRenderer;
+import com.google.ar.core.exceptions.NotTrackingException;
 import com.hl3hl3.arcoremeasure.renderer.RectanglePolygonRenderer;
 
 import java.io.IOException;
@@ -145,6 +145,7 @@ public class ArMeasureActivity extends AppCompatActivity {
         }
     }
 
+    //    OverlayView overlayViewForTest;
     TextView tv_result;
     FloatingActionButton fab;
 
@@ -179,14 +180,13 @@ public class ArMeasureActivity extends AppCompatActivity {
         }
     };
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Fabric.with(this, new Crashlytics());
         setContentView(R.layout.activity_main);
 
+//        overlayViewForTest = (OverlayView)findViewById(R.id.overlay_for_test);
         tv_result = (TextView) findViewById(R.id.tv_result);
         fab = (FloatingActionButton) findViewById(R.id.fab);
 
@@ -499,7 +499,15 @@ public class ArMeasureActivity extends AppCompatActivity {
         private int nowTouchingPointIndex = DEFAULT_VALUE;
         private int viewWidth = 0;
         private int viewHeight = 0;
-        float touchDistanceLimit = 0.1f;
+        // according to cube.obj, cube diameter = 0.02f
+        private final float cubeHitAreaRadius = 0.08f;
+        private final float[] centerVertexOfCube = {0f, 0f, 0f, 1};
+        private final float[] vertexResult = new float[4];
+
+        private float[] tempTranslation = new float[3];
+        private float[] tempRotation = new float[4];
+        private float[] projmtx = new float[16];
+        private float[] viewmtx = new float[16];
 
         public GLSurfaceRenderer(Context context){
             this.context = context;
@@ -596,9 +604,6 @@ public class ArMeasureActivity extends AppCompatActivity {
             showCubeStatus();
         }
 
-        float[] tempTranslation = new float[3];
-        float[] tempRotation = new float[4];
-
         @Override
         public void onDrawFrame(GL10 gl) {
 //            log(TAG, "onDrawFrame(), mTouches.size=" + mTouches.size());
@@ -613,132 +618,6 @@ public class ArMeasureActivity extends AppCompatActivity {
                 // UpdateMode.BLOCKING (it is by default), this will throttle the rendering to the
                 // camera framerate.
                 Frame frame = mSession.update();
-                if(frame.getTrackingState() == Frame.TrackingState.TRACKING){
-                    MotionEvent tap = mQueuedSingleTaps.poll();
-                    if(tap != null){
-//                        log(TAG, "has tap");
-                        for (HitResult hit : frame.hitTest(tap)) {
-                            // Check if any plane was hit, and if it was hit inside the plane polygon.
-                            if (hit instanceof PlaneHitResult && ((PlaneHitResult) hit).isHitInPolygon()) {
-                                Pose hitPose = hit.getHitPose();
-                                int smallestIndex = DEFAULT_VALUE;
-                                double smallestDistance = viewHeight;
-                                if(mTouches.size() > 0){
-                                    for(int i=0; i<mTouches.size(); i++){
-                                        double touch_point_distance = getDistance(hitPose, mTouches.get(i).getPoseNoAlign());
-                                        if(touch_point_distance < smallestDistance){
-                                            smallestIndex = i;
-                                            smallestDistance = touch_point_distance;
-                                        }
-                                    }
-                                }
-
-//                                log(TAG, "smallestIndex=" + smallestIndex + ", smallestDistance=" + smallestDistance);
-                                if(smallestIndex > DEFAULT_VALUE && smallestDistance < touchDistanceLimit){
-                                    // now touching point index = smallestIndex
-                                    nowTouchingPointIndex = smallestIndex;
-                                }else {
-                                    // Cap the number of objects created. This avoids overloading both the
-                                    // rendering system and ARCore.
-                                    if (mTouches.size() >= 16) {
-                                        mSession.removeAnchors(Arrays.asList(mTouches.get(0).getAnchor()));
-                                        mTouches.remove(0);
-
-                                        mShowingTapPointX.remove(0);
-                                        mShowingTapPointY.remove(0);
-                                    }
-
-                                    // Adding an Anchor tells ARCore that it should track this position in
-                                    // space. This anchor will be used in PlaneAttachment to place the 3d model
-                                    // in the correct position relative both to the world and to the plane.
-                                    mTouches.add(new PlaneAttachment(
-                                            ((PlaneHitResult) hit).getPlane(),
-                                            mSession.addAnchor(hit.getHitPose())));
-
-                                    mShowingTapPointX.add(tap.getX());
-                                    mShowingTapPointY.add(tap.getY());
-
-                                    if(mTouches.size() == 0){
-                                        nowTouchingPointIndex = DEFAULT_VALUE;
-                                    }else {
-                                        nowTouchingPointIndex = mTouches.size() - 1;
-                                    }
-
-//                                    log(TAG, "tap point[" + (mShowingTapPointX.size() - 1) + "] at (" + tap.getX() + ", " + tap.getY() + ")");
-                                    // Hits are sorted by depth. Consider only closest hit on a plane.
-                                }
-                                showMoreAction();
-                                showCubeStatus();
-                                break;
-                            }
-                        }
-                    }else{
-                        if(mShowingTapPointX.size() > 0 && mQueuedScrollDx.size() > 1) {
-                            // no queued tap, maybe moving
-//                            log(TAG, "mShowingTapPointX.size()=" + mShowingTapPointX.size() + " mQueuedScrollDx.size()=" + mQueuedScrollDx.size());
-                            if(nowTouchingPointIndex == DEFAULT_VALUE){
-                                // don't move
-                            }else {
-                                int index = nowTouchingPointIndex;
-                                if(index >= mShowingTapPointX.size()){
-                                    // wrong point size, don't move.
-                                }else{
-                                    float scrollDx = 0;
-                                    float scrollDy = 0;
-                                    int scrollQueueSize = mQueuedScrollDx.size();
-                                    for(int i=0; i<scrollQueueSize; i++){
-                                        scrollDx += mQueuedScrollDx.poll();
-                                        scrollDy += mQueuedScrollDy.poll();
-                                    }
-
-                                    if(isVerticalMode){
-                                        PlaneAttachment tempPlaneAttachment = mTouches.remove(index);
-                                        mSession.removeAnchors(Arrays.asList(tempPlaneAttachment.getAnchor()));
-
-                                        Pose toTranslatePose = tempPlaneAttachment.getPoseNoAlign();
-                                        toTranslatePose.getTranslation(tempTranslation, 0);
-                                        toTranslatePose.getRotationQuaternion(tempRotation, 0);
-//                                        log(TAG, "point[" + index + "] move vertical "+ (scrollDy / viewHeight) + ", tY=" + tempTranslation[1]
-//                                         + ", new tY=" + (tempTranslation[1] += (scrollDy / viewHeight)));
-                                        tempTranslation[1] += (scrollDy / viewHeight);
-                                        mTouches.add(index, new PlaneAttachment(
-                                                tempPlaneAttachment.getPlane(),
-                                                mSession.addAnchor(new Pose(tempTranslation, tempRotation))));
-                                    }else{
-                                        float x = mShowingTapPointX.get(index);
-                                        float y = mShowingTapPointY.get(index);
-                                        float toX = x - scrollDx;
-                                        float toY = y - scrollDy;
-                                        mShowingTapPointX.remove(index);
-                                        mShowingTapPointX.add(index, toX);
-
-                                        mShowingTapPointY.remove(index);
-                                        mShowingTapPointY.add(index, toY);
-
-//                                log(TAG, "point[" + index + "] move scroll=(" + scrollDx + ", " + scrollDy + ") from(" + x + ", " + y + ") to(" + toX + ", " + toY + ")");
-
-                                        if (mTouches.size() > index) {
-                                            PlaneAttachment attachment = mTouches.remove(index);
-                                            // remove duplicated anchor
-                                            mSession.removeAnchors(Arrays.asList(attachment.getAnchor()));
-
-                                            Pose pose = attachment.getPoseNoAlign();
-                                            pose.getTranslation(tempTranslation, 0);
-                                            pose.getRotationQuaternion(tempRotation, 0);
-                                            tempTranslation[0] -= (scrollDx / viewWidth);
-                                            tempTranslation[2] -= (scrollDy / viewHeight);
-                                            mTouches.add(index, new PlaneAttachment(
-                                                    attachment.getPlane(),
-                                                    mSession.addAnchor(new Pose(tempTranslation, tempRotation))));
-                                        }
-                                    }
-                                }
-
-                            }
-                        }
-                    }
-                }
-
                 // Draw background.
                 mBackgroundRenderer.draw(frame);
 
@@ -748,11 +627,9 @@ public class ArMeasureActivity extends AppCompatActivity {
                 }
 
                 // Get projection matrix.
-                float[] projmtx = new float[16];
                 mSession.getProjectionMatrix(projmtx, 0, 0.1f, 100.0f);
 
                 // Get camera matrix and draw.
-                float[] viewmtx = new float[16];
                 frame.getViewMatrix(viewmtx, 0);
 
                 // Compute lighting from average intensity of the image.
@@ -776,75 +653,167 @@ public class ArMeasureActivity extends AppCompatActivity {
                 // Visualize planes.
                 mPlaneRenderer.drawPlanes(mSession.getAllPlanes(), frame.getPose(), projmtx);
 
-                if(mTouches.size() == 0){
+                // draw cube & line from last frame
+                if(mTouches.size() < 1){
                     // no point
-//                    log(TAG, "no point");
-                    showResult("");
-                }else if(mTouches.size() == 1){
-                    Pose point0 = mTouches.get(0).getPoseNoAlign();
-                    if(nowTouchingPointIndex == 0){
-                        drawObj(point0, mCubeSelected, viewmtx, projmtx, lightIntensity);
-                    }else{
-                        drawObj(point0, mCube, viewmtx, projmtx, lightIntensity);
-                    }
-//                    log(TAG, "only one point, "
-//                            + "point0(" +point0.tx()+ ", "+point0.ty()+", "+point0.tz()+")"
-//                    );
                     showResult("");
                 }else{
-                    // more then 1 point
+                    // draw selected cube
+                    if(nowTouchingPointIndex != DEFAULT_VALUE) {
+                        drawObj(mTouches.get(nowTouchingPointIndex).getPoseNoAlign(), mCubeSelected, viewmtx, projmtx, lightIntensity);
+                        checkIfHit(mCubeSelected, nowTouchingPointIndex);
+                    }
                     StringBuilder sb = new StringBuilder();
                     double total = 0;
-                    Pose point0;
                     Pose point1;
-
-                    if(nowTouchingPointIndex != DEFAULT_VALUE) {
-                        // draw selected cube
-                        drawObj(mTouches.get(nowTouchingPointIndex).getPoseNoAlign(), mCubeSelected, viewmtx, projmtx, lightIntensity);
-                    }
-
                     // draw first cube
-                    point0 = mTouches.get(0).getPoseNoAlign();
+                    Pose point0 = mTouches.get(0).getPoseNoAlign();
                     drawObj(point0, mCube, viewmtx, projmtx, lightIntensity);
-
-//                    log(TAG, "point ty=" + point0.ty());
-
-                    for(int i=0; i<mTouches.size() - 1; i++){
-                        point0 = mTouches.get(i).getPoseNoAlign();
-                        point1 = mTouches.get(i + 1).getPoseNoAlign();
-                        // draw point1
+                    checkIfHit(mCube, 0);
+                    // draw the rest cube
+                    for(int i = 1; i < mTouches.size(); i++){
+                        point1 = mTouches.get(i).getPoseNoAlign();
                         drawObj(point1, mCube, viewmtx, projmtx, lightIntensity);
-
-                        // draw line
-                        float lineWidth = 0.002f;
-                        float lineWidthH = lineWidth / viewHeight * viewWidth;
-                        mRectRenderer.setVerts(
-                                point0.tx() - lineWidth, point0.ty() + lineWidthH, point0.tz() - lineWidth,
-                                point0.tx() + lineWidth, point0.ty() + lineWidthH, point0.tz() + lineWidth,
-                                point1.tx() + lineWidth, point1.ty() + lineWidthH, point1.tz() + lineWidth,
-                                point1.tx() - lineWidth, point1.ty() + lineWidthH, point1.tz() - lineWidth
-                                ,
-                                point0.tx() - lineWidth, point0.ty() - lineWidthH, point0.tz() - lineWidth,
-                                point0.tx() + lineWidth, point0.ty() - lineWidthH, point0.tz() + lineWidth,
-                                point1.tx() + lineWidth, point1.ty() - lineWidthH, point1.tz() + lineWidth,
-                                point1.tx() - lineWidth, point1.ty() - lineWidthH, point1.tz() - lineWidth
-                        );
-
-                        mRectRenderer.draw(viewmtx, projmtx);
+                        checkIfHit(mCube, i);
+                        drawLine(point0, point1, viewmtx, projmtx);
 
                         float distanceCm = ((int)(getDistance(point0, point1) * 1000))/10.0f;
                         total += distanceCm;
                         sb.append(" + ").append(distanceCm);
+
+                        point0 = point1;
                     }
 
                     // show result
                     String result = sb.toString().replaceFirst("[+]", "") + " = " + (((int)(total * 10f))/10f) + "cm";
                     showResult(result);
                 }
+
+                // check if there is any touch event
+                MotionEvent tap = mQueuedSingleTaps.poll();
+                if(tap != null){
+                    for (HitResult hit : frame.hitTest(tap)) {
+                        // Check if any plane was hit, and if it was hit inside the plane polygon.
+                        if (hit instanceof PlaneHitResult && ((PlaneHitResult) hit).isHitInPolygon()) {
+                            // Cap the number of objects created. This avoids overloading both the
+                            // rendering system and ARCore.
+                            if (mTouches.size() >= 16) {
+                                mSession.removeAnchors(Arrays.asList(mTouches.get(0).getAnchor()));
+                                mTouches.remove(0);
+
+                                mShowingTapPointX.remove(0);
+                                mShowingTapPointY.remove(0);
+                            }
+
+                            // Adding an Anchor tells ARCore that it should track this position in
+                            // space. This anchor will be used in PlaneAttachment to place the 3d model
+                            // in the correct position relative both to the world and to the plane.
+                            mTouches.add(new PlaneAttachment(
+                                    ((PlaneHitResult) hit).getPlane(),
+                                    mSession.addAnchor(hit.getHitPose())));
+
+                            mShowingTapPointX.add(tap.getX());
+                            mShowingTapPointY.add(tap.getY());
+
+                            if(mTouches.size() == 0){
+                                nowTouchingPointIndex = DEFAULT_VALUE;
+                            }else {
+                                nowTouchingPointIndex = mTouches.size() - 1;
+                            }
+
+                            showMoreAction();
+                            showCubeStatus();
+                            break;
+                        }
+                    }
+                }else{
+                    handleMoveEvent(nowTouchingPointIndex);
+                }
             } catch (Throwable t) {
                 // Avoid crashing the application due to unhandled exceptions.
                 Log.e(TAG, "Exception on the OpenGL thread", t);
             }
+        }
+
+        private void handleMoveEvent(int nowSelectedIndex){
+            try {
+                if (mShowingTapPointX.size() < 1 || mQueuedScrollDx.size() < 2) {
+                    // no action, don't move
+                    return;
+                }
+                if (nowTouchingPointIndex == DEFAULT_VALUE) {
+                    // no selected cube, don't move
+                    return;
+                }
+                if (nowSelectedIndex >= mShowingTapPointX.size()) {
+                    // wrong index, don't move.
+                    return;
+                }
+                float scrollDx = 0;
+                float scrollDy = 0;
+                int scrollQueueSize = mQueuedScrollDx.size();
+                for (int i = 0; i < scrollQueueSize; i++) {
+                    scrollDx += mQueuedScrollDx.poll();
+                    scrollDy += mQueuedScrollDy.poll();
+                }
+
+                if (isVerticalMode) {
+                    PlaneAttachment attachment = mTouches.remove(nowSelectedIndex);
+                    mSession.removeAnchors(Arrays.asList(attachment.getAnchor()));
+                    setPoseDataToTempArray(attachment.getPoseNoAlign());
+//                        log(TAG, "point[" + nowSelectedIndex + "] move vertical "+ (scrollDy / viewHeight) + ", tY=" + tempTranslation[1]
+//                                + ", new tY=" + (tempTranslation[1] += (scrollDy / viewHeight)));
+                    tempTranslation[1] += (scrollDy / viewHeight);
+                    mTouches.add(nowSelectedIndex, new PlaneAttachment(
+                            attachment.getPlane(),
+                            mSession.addAnchor(new Pose(tempTranslation, tempRotation))));
+                } else {
+                    float toX = mShowingTapPointX.get(nowSelectedIndex) - scrollDx;
+                    mShowingTapPointX.remove(nowSelectedIndex);
+                    mShowingTapPointX.add(nowSelectedIndex, toX);
+
+                    float toY = mShowingTapPointY.get(nowSelectedIndex) - scrollDy;
+                    mShowingTapPointY.remove(nowSelectedIndex);
+                    mShowingTapPointY.add(nowSelectedIndex, toY);
+
+                    if (mTouches.size() > nowSelectedIndex) {
+                        PlaneAttachment attachment = mTouches.remove(nowSelectedIndex);
+                        // remove duplicated anchor
+                        mSession.removeAnchors(Arrays.asList(attachment.getAnchor()));
+                        setPoseDataToTempArray(attachment.getPoseNoAlign());
+                        tempTranslation[0] -= (scrollDx / viewWidth);
+                        tempTranslation[2] -= (scrollDy / viewHeight);
+                        mTouches.add(nowSelectedIndex, new PlaneAttachment(
+                                attachment.getPlane(),
+                                mSession.addAnchor(new Pose(tempTranslation, tempRotation))));
+                    }
+                }
+            } catch (NotTrackingException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void setPoseDataToTempArray(Pose pose){
+            pose.getTranslation(tempTranslation, 0);
+            pose.getRotationQuaternion(tempRotation, 0);
+        }
+
+        private void drawLine(Pose pose0, Pose pose1, float[] viewmtx, float[] projmtx){
+            float lineWidth = 0.002f;
+            float lineWidthH = lineWidth / viewHeight * viewWidth;
+            mRectRenderer.setVerts(
+                    pose0.tx() - lineWidth, pose0.ty() + lineWidthH, pose0.tz() - lineWidth,
+                    pose0.tx() + lineWidth, pose0.ty() + lineWidthH, pose0.tz() + lineWidth,
+                    pose1.tx() + lineWidth, pose1.ty() + lineWidthH, pose1.tz() + lineWidth,
+                    pose1.tx() - lineWidth, pose1.ty() + lineWidthH, pose1.tz() - lineWidth
+                    ,
+                    pose0.tx() - lineWidth, pose0.ty() - lineWidthH, pose0.tz() - lineWidth,
+                    pose0.tx() + lineWidth, pose0.ty() - lineWidthH, pose0.tz() + lineWidth,
+                    pose1.tx() + lineWidth, pose1.ty() - lineWidthH, pose1.tz() + lineWidth,
+                    pose1.tx() - lineWidth, pose1.ty() - lineWidthH, pose1.tz() - lineWidth
+            );
+
+            mRectRenderer.draw(viewmtx, projmtx);
         }
 
         private void drawObj(Pose pose, ObjectRenderer renderer, float[] cameraView, float[] cameraPerspective, float lightIntensity){
@@ -853,16 +822,37 @@ public class ArMeasureActivity extends AppCompatActivity {
             renderer.draw(cameraView, cameraPerspective, lightIntensity);
         }
 
+        private void checkIfHit(ObjectRenderer renderer, int cubeIndex){
+            boolean isHit = isMVPMatrixHitMotionEvent(renderer.getModelViewProjectionMatrix(), mQueuedSingleTaps.peek());
+            if(isHit){
+                nowTouchingPointIndex = cubeIndex;
+                mQueuedSingleTaps.poll();
+                showMoreAction();
+                showCubeStatus();
+            }
+        }
+
+        private boolean isMVPMatrixHitMotionEvent(float[] ModelViewProjectionMatrix, MotionEvent event){
+            if(event == null){
+                return false;
+            }
+            Matrix.multiplyMV(vertexResult, 0, ModelViewProjectionMatrix, 0, centerVertexOfCube, 0);
+            // circle hit test
+            float radius = (viewWidth / 2) * (cubeHitAreaRadius/vertexResult[3]);
+            float dx = event.getX() - (viewWidth / 2) * (1 + vertexResult[0]/vertexResult[3]);
+            float dy = event.getY() - (viewHeight / 2) * (1 - vertexResult[1]/vertexResult[3]);
+            double distance = Math.sqrt(dx * dx + dy * dy);
+//            // for debug
+//            overlayViewForTest.setPoint("cubeCenter", screenX, screenY);
+//            overlayViewForTest.postInvalidate();
+            return distance < radius;
+        }
+
         private double getDistance(Pose pose0, Pose pose1){
             float dx = pose0.tx() - pose1.tx();
             float dy = pose0.ty() - pose1.ty();
             float dz = pose0.tz() - pose1.tz();
-            double distance = Math.sqrt(dx * dx + dz * dz + dy * dy);
-//            log(TAG, "getDistance, pose0(" +pose0.tx()+ ", "+pose0.ty()+", "+pose0.tz()+")"
-//                    + " pose1(" +pose1.tx()+ ", "+pose1.ty()+", "+pose1.tz() + ")"
-//                    + " d("+dx+", "+dy+", "+dz+"), distance=" + distance + ", = " + (distance*100) + "cm"
-//            );
-            return distance;
+            return Math.sqrt(dx * dx + dz * dz + dy * dy);
         }
 
         private void showResult(final String result){

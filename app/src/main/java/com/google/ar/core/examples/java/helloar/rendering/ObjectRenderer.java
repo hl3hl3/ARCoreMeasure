@@ -367,4 +367,16 @@ public class ObjectRenderer {
         v[1] *= reciprocalLength;
         v[2] *= reciprocalLength;
     }
+
+    public float[] getModelViewProjectionMatrix(){
+        return mModelViewProjectionMatrix;
+    }
+
+    public float[] getModelViewMatrix(){
+        return mModelViewMatrix;
+    }
+
+    public float[] getModelMatrix(){
+        return mModelMatrix;
+    }
 }
