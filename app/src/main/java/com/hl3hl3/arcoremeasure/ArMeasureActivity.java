@@ -854,6 +854,25 @@ public class ArMeasureActivity extends AppCompatActivity {
                 return false;
             }
             Matrix.multiplyMV(vertexResult, 0, ModelViewProjectionMatrix, 0, centerVertexOfCube, 0);
+            /**
+             * vertexResult = [x, y, z, w]
+             *
+             * coordinates in View
+             * ┌─────────────────────────────────────────┐╮
+             * │[0, 0]                     [viewWidth, 0]│
+             * │       [viewWidth/2, viewHeight/2]       │view height
+             * │[0, viewHeight]   [viewWidth, viewHeight]│
+             * └─────────────────────────────────────────┘╯
+             * ╰                view width               ╯
+             *
+             * coordinates in GLSurfaceView frame
+             * ┌─────────────────────────────────────────┐╮
+             * │[-1.0,  1.0]                  [1.0,  1.0]│
+             * │                 [0, 0]                  │view height
+             * │[-1.0, -1.0]                  [1.0, -1.0]│
+             * └─────────────────────────────────────────┘╯
+             * ╰                view width               ╯
+             */
             // circle hit test
             float radius = (viewWidth / 2) * (cubeHitAreaRadius/vertexResult[3]);
             float dx = event.getX() - (viewWidth / 2) * (1 + vertexResult[0]/vertexResult[3]);
