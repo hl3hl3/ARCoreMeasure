@@ -344,12 +344,6 @@ public class ArMeasureActivity extends AppCompatActivity {
     }
 
     private boolean isPackageInstalled(String packagename, PackageManager packageManager) {
-
-        List<ApplicationInfo> infoList = packageManager.getInstalledApplications(0);
-        for(ApplicationInfo info : infoList){
-            Log.d("packageName", info.packageName);
-        }
-
         try {
             packageManager.getPackageInfo(packagename, 0);
             return true;
