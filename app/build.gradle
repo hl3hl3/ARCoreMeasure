@@ -22,7 +22,7 @@ android {
         // 24 is the minimum since ARCore only works with 24 and higher.
         minSdkVersion 24
         targetSdkVersion 27
-        versionCode 11
+        versionCode 12
         versionName "1.5"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
