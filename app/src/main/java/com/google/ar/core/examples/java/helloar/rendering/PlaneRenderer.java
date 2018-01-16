@@ -14,12 +14,6 @@
  */
 package com.google.ar.core.examples.java.helloar.rendering;
 
-import com.google.ar.core.Frame;
-import com.google.ar.core.Plane;
-import com.google.ar.core.Pose;
-import com.google.ar.core.Session;
-import com.hl3hl3.arcoremeasure.R;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -27,6 +21,12 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
+
+import com.google.ar.core.Camera;
+import com.google.ar.core.Plane;
+import com.google.ar.core.Pose;
+import com.google.ar.core.Trackable.TrackingState;
+import com.hl3hl3.arcoremeasure.R;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -40,6 +40,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -58,12 +59,12 @@ public class PlaneRenderer {
     private static final int INITIAL_BUFFER_BOUNDARY_VERTS = 64;
 
     private static final int INITIAL_VERTEX_BUFFER_SIZE_BYTES =
-        BYTES_PER_FLOAT * COORDS_PER_VERTEX * VERTS_PER_BOUNDARY_VERT *
-            INITIAL_BUFFER_BOUNDARY_VERTS;
+        BYTES_PER_FLOAT * COORDS_PER_VERTEX * VERTS_PER_BOUNDARY_VERT
+            * INITIAL_BUFFER_BOUNDARY_VERTS;
 
     private static final int INITIAL_INDEX_BUFFER_SIZE_BYTES =
-        BYTES_PER_SHORT * INDICES_PER_BOUNDARY_VERT * INDICES_PER_BOUNDARY_VERT *
-            INITIAL_BUFFER_BOUNDARY_VERTS;
+        BYTES_PER_SHORT * INDICES_PER_BOUNDARY_VERT * INDICES_PER_BOUNDARY_VERT
+            * INITIAL_BUFFER_BOUNDARY_VERTS;
 
     private static final float FADE_RADIUS_M = 0.25f;
     private static final float DOTS_PER_METER = 10.0f;
@@ -273,7 +274,7 @@ public class PlaneRenderer {
     static class SortablePlane {
         final float mDistance;
         final Plane mPlane;
-        public SortablePlane(float distance, Plane plane) {
+        SortablePlane(float distance, Plane plane) {
             this.mDistance = distance;
             this.mPlane = plane;
         }
@@ -283,9 +284,9 @@ public class PlaneRenderer {
      * Draws the collection of tracked planes, with closer planes hiding more distant ones.
      *
      * @param allPlanes The collection of planes to draw.
-     * @param cameraPose The pose of the camera, as returned by {@link Frame#getPose()}
+     * @param cameraPose The pose of the camera, as returned by {@link Camera#getPose()}
      * @param cameraPerspective The projection matrix, as returned by
-     *     {@link Session#getProjectionMatrix(float[], int, float, float)}
+     *     {@link Camera#getProjectionMatrix(float[], int, float, float)}
      */
     public void drawPlanes(Collection<Plane> allPlanes, Pose cameraPose,
             float[] cameraPerspective) {
@@ -297,8 +298,8 @@ public class PlaneRenderer {
         float cameraY = cameraPose.ty();
         float cameraZ = cameraPose.tz();
         for (Plane plane : allPlanes) {
-            if (//plane.getType() != com.google.ar.core.Plane.Type.HORIZONTAL_UPWARD_FACING ||
-                    plane.getTrackingState() != Plane.TrackingState.TRACKING) {
+            if (plane.getTrackingState() != TrackingState.TRACKING
+                    || plane.getSubsumedBy() != null) {
                 continue;
             }
 
@@ -306,8 +307,8 @@ public class PlaneRenderer {
             // Get transformed Y axis of plane's coordinate system.
             center.getTransformedAxis(1, 1.0f, normal, 0);
             // Compute dot product of plane's normal with vector from camera to plane center.
-            float distance = (cameraX - center.tx()) * normal[0] +
-                (cameraY - center.ty()) * normal[1] + (cameraZ - center.tz()) * normal[2];
+            float distance = (cameraX - center.tx()) * normal[0]
+                + (cameraY - center.ty()) * normal[1] + (cameraZ - center.tz()) * normal[2];
             if (distance < 0) {  // Plane is back-facing.
                 continue;
             }
@@ -321,7 +322,7 @@ public class PlaneRenderer {
         });
 
 
-        float cameraView[] = new float[16];
+        float[] cameraView = new float[16];
         cameraPose.inverse().toMatrix(cameraView, 0);
 
         // Planes are drawn with additive blending, masked by the alpha channel for occlusion.
@@ -335,7 +336,7 @@ public class PlaneRenderer {
         // Disable depth write.
         GLES20.glDepthMask(false);
 
-        // Additive blending, masked by alpha chanel, clearing alpha channel.
+        // Additive blending, masked by alpha channel, clearing alpha channel.
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFuncSeparate(
             GLES20.GL_DST_ALPHA, GLES20.GL_ONE,              // RGB (src, dest)
@@ -362,13 +363,13 @@ public class PlaneRenderer {
             float[] planeMatrix = new float[16];
             plane.getCenterPose().toMatrix(planeMatrix, 0);
 
-            updatePlaneParameters(planeMatrix, plane.getExtentX(),
-                plane.getExtentZ(), plane.getPlanePolygon());
+            updatePlaneParameters(
+                planeMatrix, plane.getExtentX(), plane.getExtentZ(), plane.getPolygon());
 
             // Get plane index. Keep a map to assign same indices to same planes.
             Integer planeIndex = mPlaneIndexMap.get(plane);
             if (planeIndex == null) {
-                planeIndex = Integer.valueOf(mPlaneIndexMap.size());
+                planeIndex = mPlaneIndexMap.size();
                 mPlaneIndexMap.put(plane, planeIndex);
             }
 
@@ -384,8 +385,8 @@ public class PlaneRenderer {
             float uScale = DOTS_PER_METER;
             float vScale = DOTS_PER_METER * EQUILATERAL_TRIANGLE_SCALE;
             mPlaneAngleUvMatrix[0] = +(float) Math.cos(angleRadians) * uScale;
-            mPlaneAngleUvMatrix[1] = -(float) Math.sin(angleRadians) * uScale;
-            mPlaneAngleUvMatrix[2] = +(float) Math.sin(angleRadians) * vScale;
+            mPlaneAngleUvMatrix[1] = -(float) Math.sin(angleRadians) * vScale;
+            mPlaneAngleUvMatrix[2] = +(float) Math.sin(angleRadians) * uScale;
             mPlaneAngleUvMatrix[3] = +(float) Math.cos(angleRadians) * vScale;
             GLES20.glUniformMatrix2fv(mPlaneUvMatrixUniform, 1, false, mPlaneAngleUvMatrix, 0);
 

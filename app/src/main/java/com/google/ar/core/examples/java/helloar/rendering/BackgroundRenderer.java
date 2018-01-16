@@ -14,18 +14,19 @@
  */
 package com.google.ar.core.examples.java.helloar.rendering;
 
-import com.google.ar.core.Frame;
-import com.google.ar.core.Session;
-import com.hl3hl3.arcoremeasure.R;
-
 import android.content.Context;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 
+import com.google.ar.core.Frame;
+import com.google.ar.core.Session;
+import com.hl3hl3.arcoremeasure.R;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -49,7 +50,7 @@ public class BackgroundRenderer {
     private int mQuadPositionParam;
     private int mQuadTexCoordParam;
     private int mTextureId = -1;
-    private int mTextureTarget = GLES11Ext.GL_TEXTURE_EXTERNAL_OES;
+
     public BackgroundRenderer() {
     }
 
@@ -66,14 +67,15 @@ public class BackgroundRenderer {
      */
     public void createOnGlThread(Context context) {
         // Generate the background texture.
-        int textures[] = new int[1];
+        int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
         mTextureId = textures[0];
-        GLES20.glBindTexture(mTextureTarget, mTextureId);
-        GLES20.glTexParameteri(mTextureTarget, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(mTextureTarget, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(mTextureTarget, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-        GLES20.glTexParameteri(mTextureTarget, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+        int textureTarget = GLES11Ext.GL_TEXTURE_EXTERNAL_OES;
+        GLES20.glBindTexture(textureTarget, mTextureId);
+        GLES20.glTexParameteri(textureTarget, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(textureTarget, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(textureTarget, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+        GLES20.glTexParameteri(textureTarget, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
 
         int numVertices = 4;
         if (numVertices != QUAD_COORDS.length / COORDS_PER_VERTEX) {
@@ -119,16 +121,17 @@ public class BackgroundRenderer {
 
     /**
      * Draws the AR background image.  The image will be drawn such that virtual content rendered
-     * with the matrices provided by {@link Frame#getViewMatrix(float[], int)} and
-     * {@link Session#getProjectionMatrix(float[], int, float, float)} will accurately follow
-     * static physical objects.  This must be called <b>before</b> drawing virtual content.
+     * with the matrices provided by {@link com.google.ar.core.Camera#getViewMatrix(float[], int)}
+     * and {@link com.google.ar.core.Camera#getProjectionMatrix(float[], int, float, float)} will
+     * accurately follow static physical objects.
+     * This must be called <b>before</b> drawing virtual content.
      *
      * @param frame The last {@code Frame} returned by {@link Session#update()}.
      */
     public void draw(Frame frame) {
         // If display rotation changed (also includes view size change), we need to re-query the uv
         // coordinates for the screen rect, as they may have changed as well.
-        if (frame.isDisplayRotationChanged()) {
+        if (frame.hasDisplayGeometryChanged()) {
             frame.transformDisplayUvCoords(mQuadTexCoord, mQuadTexCoordTransformed);
         }
 
@@ -166,14 +169,14 @@ public class BackgroundRenderer {
         ShaderUtil.checkGLError(TAG, "Draw");
     }
 
-    public static final float[] QUAD_COORDS = new float[]{
+    private static final float[] QUAD_COORDS = new float[]{
             -1.0f, -1.0f, 0.0f,
             -1.0f, +1.0f, 0.0f,
             +1.0f, -1.0f, 0.0f,
             +1.0f, +1.0f, 0.0f,
     };
 
-    public static final float[] QUAD_TEXCOORDS = new float[]{
+    private static final float[] QUAD_TEXCOORDS = new float[]{
             0.0f, 1.0f,
             0.0f, 0.0f,
             1.0f, 1.0f,

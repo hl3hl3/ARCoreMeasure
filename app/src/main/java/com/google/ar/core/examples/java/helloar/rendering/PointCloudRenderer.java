@@ -14,16 +14,14 @@
  */
 package com.google.ar.core.examples.java.helloar.rendering;
 
-import com.google.ar.core.Frame;
-import com.google.ar.core.PointCloud;
-import com.google.ar.core.Pose;
-import com.google.ar.core.Session;
-import com.hl3hl3.arcoremeasure.R;
-
 import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+
+import com.google.ar.core.PointCloud;
+import com.hl3hl3.arcoremeasure.R;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -66,7 +64,7 @@ public class PointCloudRenderer {
     public void createOnGlThread(Context context) {
         ShaderUtil.checkGLError(TAG, "before create");
 
-        int buffers[] = new int[1];
+        int[] buffers = new int[1];
         GLES20.glGenBuffers(1, buffers, 0);
         mVbo = buffers[0];
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mVbo);
@@ -129,23 +127,17 @@ public class PointCloudRenderer {
         ShaderUtil.checkGLError(TAG, "after update");
     }
 
-    /**
-     * Renders the point cloud.
-     *
-     * @param pose the current point cloud pose, from {@link Frame#getPointCloudPose()}.
-     * @param cameraView the camera view matrix for this frame, typically from
-     *     {@link Frame#getViewMatrix(float[], int)}.
-     * @param cameraPerspective the camera projection matrix for this frame, typically from
-     *     {@link Session#getProjectionMatrix(float[], int, float, float)}.
-     */
-    public void draw(Pose pose, float[] cameraView, float[] cameraPerspective) {
-        float[] modelMatrix = new float[16];
-        pose.toMatrix(modelMatrix, 0);
-
-        float[] modelView = new float[16];
+  /**
+   * Renders the point cloud. ArCore point cloud is given in world space.
+   *
+   * @param cameraView the camera view matrix for this frame, typically from {@link
+   *     com.google.ar.core.Camera#getViewMatrix(float[], int)}.
+   * @param cameraPerspective the camera projection matrix for this frame, typically from {@link
+   *     com.google.ar.core.Camera#getProjectionMatrix(float[], int, float, float)}.
+   */
+  public void draw(float[] cameraView, float[] cameraPerspective) {
         float[] modelViewProjection = new float[16];
-        Matrix.multiplyMM(modelView, 0, cameraView, 0, modelMatrix, 0);
-        Matrix.multiplyMM(modelViewProjection, 0, cameraPerspective, 0, modelView, 0);
+        Matrix.multiplyMM(modelViewProjection, 0, cameraPerspective, 0, cameraView, 0);
 
         ShaderUtil.checkGLError(TAG, "Before draw");
 

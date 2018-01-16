@@ -1,1 +1,1 @@
-include ':app', ':arcore_client'
+include ':app'

@@ -5,11 +5,11 @@
 \n•  Google Pixel and Pixel XL
 \n•  Samsung Galaxy S8 (SM-G950U, SM-G950N, SM-G950F, SM-G950FD, SM-G950W, SM-G950U1)
 \nhttps://developers.google.com/ar/discover/</string>
-    <string name="alert_download">下載 ARCore Service.</string>
-    <string name="alert_download_link">https://github.com/google-ar/arcore-android-sdk/releases/download/sdk-preview/arcore-preview.apk</string>
+    <string name="alert_download">下載 ARCore Service Preview2.</string>
+    <string name="alert_download_link">https://github.com/google-ar/arcore-android-sdk/releases/download/sdk-preview2/arcore-preview2.apk</string>
     <string name="alert_info">更多資訊連結</string>
     <string name="alert_info_link">https://developers.google.com/ar/develop/java/getting-started</string>
-    <string name="alert_do_not_show">我已經下載並成功安裝 ARCore Service，不再顯示這個提醒視窗。</string>
+    <string name="alert_do_not_show">我已經下載並成功安裝 ARCore Service Preview2，不再顯示這個提醒視窗。</string>
 
     <string name="ok">OK</string>
 
