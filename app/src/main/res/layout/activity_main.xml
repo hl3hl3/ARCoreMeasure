@@ -26,6 +26,12 @@
         android:layout_above="@+id/tv_result_label"
         />
 
+    <android.opengl.GLSurfaceView
+        android:id="@+id/surfaceview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="top"/>
+
     <!-- for test -->
     <!--<com.hl3hl3.arcoremeasure.OverlayView-->
         <!--android:id="@+id/overlay_for_test"-->

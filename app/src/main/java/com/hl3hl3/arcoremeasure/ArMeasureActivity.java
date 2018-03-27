@@ -1,17 +1,12 @@
 package com.hl3hl3.arcoremeasure;
 
-import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.design.widget.BaseTransientBottomBar;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -33,31 +28,33 @@ import android.widget.Toast;
 
 import com.crashlytics.android.Crashlytics;
 import com.google.ar.core.Anchor;
+import com.google.ar.core.ArCoreApk;
 import com.google.ar.core.Camera;
 import com.google.ar.core.Config;
 import com.google.ar.core.Frame;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
+import com.google.ar.core.Point;
 import com.google.ar.core.PointCloud;
 import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
 import com.google.ar.core.Trackable;
+import com.google.ar.core.TrackingState;
 import com.google.ar.core.examples.java.helloar.CameraPermissionHelper;
 import com.google.ar.core.examples.java.helloar.DisplayRotationHelper;
 import com.google.ar.core.examples.java.helloar.rendering.BackgroundRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.ObjectRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.PlaneRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.PointCloudRenderer;
-import com.google.ar.core.exceptions.FatalException;
 import com.google.ar.core.exceptions.NotTrackingException;
 import com.google.ar.core.exceptions.UnavailableApkTooOldException;
 import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
+import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
 import com.hl3hl3.arcoremeasure.renderer.RectanglePolygonRenderer;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -75,25 +72,28 @@ public class ArMeasureActivity extends AppCompatActivity {
     private static final String ASSET_NAME_CUBE = "cube_green.png";
     private static final String ASSET_NAME_CUBE_SELECTED = "cube_cyan.png";
 
-    private static final String NEED_ALERT = "needAlert_preview2";
     private static final int MAX_CUBE_COUNT = 16;
 
     // Rendering. The Renderers are created here, and initialized when the GL surface is created.
-    private GLSurfaceView mSurfaceView = null;
+    private GLSurfaceView surfaceView = null;
 
-    private Session mSession = null;
-    private BackgroundRenderer mBackgroundRenderer = new BackgroundRenderer();
-    private GestureDetector mGestureDetector;
-    private Snackbar mLoadingMessageSnackbar = null;
-    private DisplayRotationHelper mDisplayRotationHelper;
+    private boolean installRequested;
 
-    private RectanglePolygonRenderer mRectRenderer;
+    private Session session = null;
+    private GestureDetector gestureDetector;
+    private Snackbar messageSnackbar = null;
+    private DisplayRotationHelper displayRotationHelper;
 
-    private PlaneRenderer mPlaneRenderer = new PlaneRenderer();
-    private PointCloudRenderer mPointCloud = new PointCloudRenderer();
+    private final BackgroundRenderer backgroundRenderer = new BackgroundRenderer();
+    private final PlaneRenderer planeRenderer = new PlaneRenderer();
+    private final PointCloudRenderer pointCloud = new PointCloudRenderer();
+
+    private final ObjectRenderer cube = new ObjectRenderer();
+    private final ObjectRenderer cubeSelected = new ObjectRenderer();
+    private RectanglePolygonRenderer rectRenderer = null;
 
     // Temporary matrix allocated here to reduce number of allocations for each frame.
-    private final float[] mAnchorMatrix = new float[MAX_CUBE_COUNT];
+    private final float[] anchorMatrix = new float[MAX_CUBE_COUNT];
     private final ImageView[] ivCubeIconList = new ImageView[MAX_CUBE_COUNT];
     private final int[] cubeIconIdArray = {
             R.id.iv_cube1,
@@ -115,17 +115,14 @@ public class ArMeasureActivity extends AppCompatActivity {
     };
 
     // Tap handling and UI.
-    private ArrayBlockingQueue<MotionEvent> mQueuedSingleTaps = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
-    private ArrayBlockingQueue<MotionEvent> mQueuedLongPress = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
-    private final ArrayList<Anchor> mAnchors = new ArrayList<>();
-    private ArrayList<Float> mShowingTapPointX = new ArrayList<>();
-    private ArrayList<Float> mShowingTapPointY = new ArrayList<>();
+    private ArrayBlockingQueue<MotionEvent> queuedSingleTaps = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
+    private ArrayBlockingQueue<MotionEvent> queuedLongPress = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
+    private final ArrayList<Anchor> anchors = new ArrayList<>();
+    private ArrayList<Float> showingTapPointX = new ArrayList<>();
+    private ArrayList<Float> showingTapPointY = new ArrayList<>();
 
-    private ArrayBlockingQueue<Float> mQueuedScrollDx = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
-    private ArrayBlockingQueue<Float> mQueuedScrollDy = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
-
-    private ObjectRenderer mCube = new ObjectRenderer();
-    private ObjectRenderer mCubeSelected = new ObjectRenderer();
+    private ArrayBlockingQueue<Float> queuedScrollDx = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
+    private ArrayBlockingQueue<Float> queuedScrollDy = new ArrayBlockingQueue<>(MAX_CUBE_COUNT);
 
     private void log(String tag, String log){
         if(BuildConfig.DEBUG) {
@@ -155,28 +152,22 @@ public class ArMeasureActivity extends AppCompatActivity {
     }
 
     //    OverlayView overlayViewForTest;
-    TextView tv_result;
-    FloatingActionButton fab;
+    private TextView tv_result;
+    private FloatingActionButton fab;
 
     private GLSurfaceRenderer glSerfaceRenderer = null;
-    private View.OnTouchListener onTouchListener = new View.OnTouchListener() {
-        @Override
-        public boolean onTouch(View v, MotionEvent event) {
-            return mGestureDetector.onTouchEvent(event);
-        }
-    };
     private GestureDetector.SimpleOnGestureListener gestureDetectorListener = new GestureDetector.SimpleOnGestureListener() {
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
             // Queue tap if there is space. Tap is lost if queue is full.
-            mQueuedSingleTaps.offer(e);
+            queuedSingleTaps.offer(e);
 //            log(TAG, "onSingleTapUp, e=" + e.getRawX() + ", " + e.getRawY());
             return true;
         }
 
         @Override
         public void onLongPress(MotionEvent e) {
-            mQueuedLongPress.offer(e);
+            queuedLongPress.offer(e);
         }
 
         @Override
@@ -188,8 +179,8 @@ public class ArMeasureActivity extends AppCompatActivity {
         public boolean onScroll(MotionEvent e1, MotionEvent e2,
                                 float distanceX, float distanceY) {
 //            log(TAG, "onScroll, dx=" + distanceX + " dy=" + distanceY);
-            mQueuedScrollDx.offer(distanceX);
-            mQueuedScrollDy.offer(distanceY);
+            queuedScrollDx.offer(distanceX);
+            queuedScrollDy.offer(distanceY);
             return true;
         }
     };
@@ -239,23 +230,197 @@ public class ArMeasureActivity extends AppCompatActivity {
         });
         fab.hide();
 
-        if(isPackageInstalled("com.google.ar.core", getPackageManager())){
-            // preview2 installed
-            logStatus("com.google.ar.core installed");
-            initSurface();
-        }else{
-            if(isPackageInstalled("com.google.tango", getPackageManager())){
-                // need to install preview 2
-                logStatus("com.google.tango installed");
-            }else{
-                logStatus("no preview 1 & 2");
-            }
-            if(getSharedPreferences().getBoolean(NEED_ALERT, true)){
-                showInitAlert();
-            }else{
-                initSurface();
-            }
+
+        displayRotationHelper = new DisplayRotationHelper(/*context=*/ this);
+
+        if(CameraPermissionHelper.hasCameraPermission(this)){
+            setupRenderer();
         }
+
+        installRequested = false;
+    }
+
+    private void setupRenderer(){
+        if(surfaceView != null){
+            return;
+        }
+        surfaceView = findViewById(R.id.surfaceview);
+//        surfaceView = new GLSurfaceView(this);
+//        FrameLayout flContent = findViewById(R.id.fl_content);
+//        flContent.addView(surfaceView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // Set up tap listener.
+        gestureDetector = new GestureDetector(this, gestureDetectorListener);
+        surfaceView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                return gestureDetector.onTouchEvent(event);
+            }
+        });
+        glSerfaceRenderer = new GLSurfaceRenderer(this);
+        surfaceView.setPreserveEGLContextOnPause(true);
+        surfaceView.setEGLContextClientVersion(2);
+        surfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
+        surfaceView.setRenderer(glSerfaceRenderer);
+        surfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        logStatus("onResume()");
+        if (session == null) {
+            Exception exception = null;
+            String message = null;
+            try {
+                switch (ArCoreApk.getInstance().requestInstall(this, !installRequested)) {
+                    case INSTALL_REQUESTED:
+                        installRequested = true;
+                        return;
+                    case INSTALLED:
+                        break;
+                }
+
+                // ARCore requires camera permissions to operate. If we did not yet obtain runtime
+                // permission on Android M and above, now is a good time to ask the user for it.
+                if (!CameraPermissionHelper.hasCameraPermission(this)) {
+                    CameraPermissionHelper.requestCameraPermission(this);
+                    return;
+                }
+
+                session = new Session(/* context= */ this);
+            } catch (UnavailableArcoreNotInstalledException
+                    | UnavailableUserDeclinedInstallationException e) {
+                message = "Please install ARCore";
+                exception = e;
+            } catch (UnavailableApkTooOldException e) {
+                message = "Please update ARCore";
+                exception = e;
+            } catch (UnavailableSdkTooOldException e) {
+                message = "Please update this app";
+                exception = e;
+            } catch (Exception e) {
+                message = "This device does not support AR";
+                exception = e;
+            }
+
+            if (message != null) {
+                showSnackbarMessage(message, true);
+                Log.e(TAG, "Exception creating session", exception);
+                return;
+            }
+
+            // Create default config and check if supported.
+            Config config = new Config(session);
+            if (!session.isSupported(config)) {
+                showSnackbarMessage("This device does not support AR", true);
+            }
+            session.configure(config);
+
+            setupRenderer();
+        }
+
+        showLoadingMessage();
+        // Note that order matters - see the note in onPause(), the reverse applies here.
+        session.resume();
+        surfaceView.onResume();
+        displayRotationHelper.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        logStatus("onPause()");
+        if (session != null) {
+            // Note that the order matters - GLSurfaceView is paused first so that it does not try
+            // to query the session. If Session is paused before GLSurfaceView, GLSurfaceView may
+            // still call session.update() and get a SessionPausedException.
+            displayRotationHelper.onPause();
+            surfaceView.onPause();
+            session.pause();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        logStatus("onRequestPermissionsResult()");
+        Toast.makeText(this, R.string.need_permission, Toast.LENGTH_LONG)
+                .show();
+        if (!CameraPermissionHelper.shouldShowRequestPermissionRationale(this)) {
+            // Permission denied with checking "Do not ask again".
+            CameraPermissionHelper.launchPermissionSettings(this);
+        }
+        finish();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        logStatus("onWindowFocusChanged()");
+        if (hasFocus) {
+            // Standard Android full-screen functionality.
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
+    private void showLoadingMessage() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                messageSnackbar = Snackbar.make(
+                        ArMeasureActivity.this.findViewById(android.R.id.content),
+                        "Searching for surfaces...", Snackbar.LENGTH_INDEFINITE);
+                messageSnackbar.getView().setBackgroundColor(0xbf323232);
+                messageSnackbar.show();
+            }
+        });
+    }
+
+    private void hideLoadingMessage() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if(messageSnackbar != null) {
+                    messageSnackbar.dismiss();
+                }
+                messageSnackbar = null;
+            }
+        });
+    }
+
+    private void showSnackbarMessage(String message, boolean finishOnDismiss) {
+        messageSnackbar =
+                Snackbar.make(
+                        ArMeasureActivity.this.findViewById(android.R.id.content),
+                        message,
+                        Snackbar.LENGTH_INDEFINITE);
+        messageSnackbar.getView().setBackgroundColor(0xbf323232);
+        if (finishOnDismiss) {
+            messageSnackbar.setAction(
+                    "Dismiss",
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            messageSnackbar.dismiss();
+                        }
+                    });
+            messageSnackbar.addCallback(
+                    new BaseTransientBottomBar.BaseCallback<Snackbar>() {
+                        @Override
+                        public void onDismissed(Snackbar transientBottomBar, int event) {
+                            super.onDismissed(transientBottomBar, event);
+                            finish();
+                        }
+                    });
+        }
+        messageSnackbar.show();
     }
 
     private void toast(int stringResId){
@@ -339,221 +504,6 @@ public class ArMeasureActivity extends AppCompatActivity {
         return popupWindow;
     }
 
-    private SharedPreferences getSharedPreferences(){
-        return getSharedPreferences("ArMeasureActivity", MODE_PRIVATE);
-    }
-
-    private boolean isPackageInstalled(String packagename, PackageManager packageManager) {
-        try {
-            packageManager.getPackageInfo(packagename, 0);
-            return true;
-        } catch (PackageManager.NameNotFoundException e) {
-            return false;
-        }
-    }
-
-    private void showInitAlert(){
-        final View view = View.inflate(this, R.layout.alert, null);
-
-        view.findViewById(R.id.tv_dontshow).setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                v.setActivated(!v.isActivated());
-            }
-        });
-
-        view.findViewById(R.id.tv_ok).setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                boolean isChecked = view.findViewById(R.id.tv_dontshow).isActivated();
-                getSharedPreferences().edit().putBoolean(NEED_ALERT, !isChecked).apply();
-                initDialog.dismiss();
-                if(initSurface()) {
-                    surfaceOnResume();
-                }
-            }
-        });
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setView(view);
-        builder.setCancelable(false);
-        initDialog = builder.create();
-        initDialog.show();
-    }
-
-    Dialog initDialog = null;
-
-    private void showNotSupportAlert(String message){
-        logStatus("showNotSupportAlert("+message+")");
-        new AlertDialog.Builder(this)
-                .setMessage(message)
-                .setCancelable(false)
-                .setNeutralButton("Ok", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        finish();
-                    }
-                })
-                .create().show();
-    }
-
-    private boolean initSurface(){
-        logStatus("initSurface()");
-
-        Exception exception = null;
-        String message = null;
-        try {
-            mSession = new Session(/* context= */ this);
-        } catch (UnavailableArcoreNotInstalledException e) {
-            message = "Please install ARCore";
-            exception = e;
-        } catch (UnavailableApkTooOldException e) {
-            message = "Please update ARCore";
-            exception = e;
-        } catch (UnavailableSdkTooOldException e) {
-            message = "Please update this app";
-            exception = e;
-        } catch (Exception e) {
-            message = "This device does not support AR";
-            exception = e;
-        }
-
-        if (message != null) {
-            showNotSupportAlert(message);
-            Log.e(TAG, "Exception creating session", exception);
-            return false;
-        }
-
-        // Create default config and check if supported.
-        Config config = new Config(mSession);
-        if (!mSession.isSupported(config)) {
-            showNotSupportAlert("This device does not support AR");
-            return false;
-        }
-        mSession.configure(config);
-
-        // Set up renderer.
-        glSerfaceRenderer = new GLSurfaceRenderer(this);
-        mSurfaceView = new GLSurfaceView(this);
-        mDisplayRotationHelper = new DisplayRotationHelper(/*context=*/ this);
-        FrameLayout flContent = findViewById(R.id.fl_content);
-        flContent.addView(mSurfaceView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        mSurfaceView.setPreserveEGLContextOnPause(true);
-        mSurfaceView.setEGLContextClientVersion(2);
-        mSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
-        mSurfaceView.setRenderer(glSerfaceRenderer);
-        mSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-
-        // Set up tap listener.
-        mGestureDetector = new GestureDetector(this, gestureDetectorListener);
-        mSurfaceView.setOnTouchListener(onTouchListener);
-        return true;
-    }
-
-    private boolean isSurfaceResume = false;
-
-    private void surfaceOnResume(){
-        logStatus("surfaceOnResume()");
-        if(isSurfaceResume){
-            return;
-        }
-        if(mSession == null){
-            return;
-        }
-        // ARCore requires camera permissions to operate. If we did not yet obtain runtime
-        // permission on Android M and above, now is a good time to ask the user for it.
-        if (CameraPermissionHelper.hasCameraPermission(this)) {
-            // Note that order matters - see the note in onPause(), the reverse applies here.
-            if (mSurfaceView != null) {
-                showLoadingMessage();
-                mSession.resume();
-                mSurfaceView.onResume();
-                mDisplayRotationHelper.onResume();
-                isSurfaceResume = true;
-            }
-        } else {
-            CameraPermissionHelper.requestCameraPermission(this);
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        logStatus("onResume()");
-        surfaceOnResume();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        logStatus("onPause()");
-        // Note that the order matters - GLSurfaceView is paused first so that it does not try
-        // to query the session. If Session is paused before GLSurfaceView, GLSurfaceView may
-        // still call mSession.update() and get a SessionPausedException.
-        if(isSurfaceResume) {
-            if (mSession != null) {
-                if(mDisplayRotationHelper != null){
-                    mDisplayRotationHelper.onPause();
-                }
-                if (mSurfaceView != null) {
-                    mSurfaceView.onPause();
-                }
-                mSession.pause();
-                isSurfaceResume = false;
-            }
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
-        logStatus("onRequestPermissionsResult()");
-        if (!CameraPermissionHelper.hasCameraPermission(this)) {
-            Toast.makeText(this, R.string.need_permission, Toast.LENGTH_LONG).show();
-            finish();
-        }
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        logStatus("onWindowFocusChanged()");
-        if (hasFocus) {
-            // Standard Android full-screen functionality.
-            getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        }
-    }
-
-    private void showLoadingMessage() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mLoadingMessageSnackbar = Snackbar.make(
-                        ArMeasureActivity.this.findViewById(android.R.id.content),
-                        "Searching for surfaces...", Snackbar.LENGTH_INDEFINITE);
-                mLoadingMessageSnackbar.getView().setBackgroundColor(0xbf323232);
-                mLoadingMessageSnackbar.show();
-            }
-        });
-    }
-
-    private void hideLoadingMessage() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mLoadingMessageSnackbar.dismiss();
-                mLoadingMessageSnackbar = null;
-            }
-        });
-    }
-
     private class GLSurfaceRenderer implements GLSurfaceView.Renderer{
         private static final String TAG = "GLSurfaceRenderer";
         private Context context;
@@ -581,27 +531,27 @@ public class ArMeasureActivity extends AppCompatActivity {
             GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
             // Create the texture and pass it to ARCore session to be filled during update().
-            mBackgroundRenderer.createOnGlThread(context);
-            if (mSession != null) {
-                mSession.setCameraTextureName(mBackgroundRenderer.getTextureId());
+            backgroundRenderer.createOnGlThread(context);
+            if (session != null) {
+                session.setCameraTextureName(backgroundRenderer.getTextureId());
             }
 
             // Prepare the other rendering objects.
             try {
-                mRectRenderer = new RectanglePolygonRenderer();
-                mCube.createOnGlThread(context, ASSET_NAME_CUBE_OBJ, ASSET_NAME_CUBE);
-                mCube.setMaterialProperties(0.0f, 3.5f, 1.0f, 6.0f);
-                mCubeSelected.createOnGlThread(context, ASSET_NAME_CUBE_OBJ, ASSET_NAME_CUBE_SELECTED);
-                mCubeSelected.setMaterialProperties(0.0f, 3.5f, 1.0f, 6.0f);
+                rectRenderer = new RectanglePolygonRenderer();
+                cube.createOnGlThread(context, ASSET_NAME_CUBE_OBJ, ASSET_NAME_CUBE);
+                cube.setMaterialProperties(0.0f, 3.5f, 1.0f, 6.0f);
+                cubeSelected.createOnGlThread(context, ASSET_NAME_CUBE_OBJ, ASSET_NAME_CUBE_SELECTED);
+                cubeSelected.setMaterialProperties(0.0f, 3.5f, 1.0f, 6.0f);
             } catch (IOException e) {
                 log(TAG, "Failed to read obj file");
             }
             try {
-                mPlaneRenderer.createOnGlThread(context, "trigrid.png");
+                planeRenderer.createOnGlThread(context, "trigrid.png");
             } catch (IOException e) {
                 log(TAG, "Failed to read plane texture");
             }
-            mPointCloud.createOnGlThread(context);
+            pointCloud.createOnGlThread(context);
         }
 
         @Override
@@ -612,7 +562,7 @@ public class ArMeasureActivity extends AppCompatActivity {
             }
             logStatus("onSurfaceChanged()");
 
-            mDisplayRotationHelper.onSurfaceChanged(width, height);
+            displayRotationHelper.onSurfaceChanged(width, height);
             GLES20.glViewport(0, 0, width, height);
             viewWidth = width;
             viewHeight = height;
@@ -623,14 +573,14 @@ public class ArMeasureActivity extends AppCompatActivity {
             logStatus("deleteNowSelection()");
             int index = nowTouchingPointIndex;
             if (index > -1){
-                if(index < mAnchors.size()) {
-                    mAnchors.remove(index).detach();
+                if(index < anchors.size()) {
+                    anchors.remove(index).detach();
                 }
-                if(index < mShowingTapPointX.size()) {
-                    mShowingTapPointX.remove(index);
+                if(index < showingTapPointX.size()) {
+                    showingTapPointX.remove(index);
                 }
-                if(index < mShowingTapPointY.size()) {
-                    mShowingTapPointY.remove(index);
+                if(index < showingTapPointY.size()) {
+                    showingTapPointY.remove(index);
                 }
             }
             setNowTouchingPointIndex(DEFAULT_VALUE);
@@ -639,20 +589,20 @@ public class ArMeasureActivity extends AppCompatActivity {
         public void setNowSelectionAsFirst(){
             logStatus("setNowSelectionAsFirst()");
             int index = nowTouchingPointIndex;
-            if (index > -1 && index < mAnchors.size()) {
-                if(index < mAnchors.size()){
+            if (index > -1 && index < anchors.size()) {
+                if(index < anchors.size()){
                     for(int i=0; i<index; i++){
-                        mAnchors.add(mAnchors.remove(0));
+                        anchors.add(anchors.remove(0));
                     }
                 }
-                if(index < mShowingTapPointX.size()){
+                if(index < showingTapPointX.size()){
                     for(int i=0; i<index; i++){
-                        mShowingTapPointX.add(mShowingTapPointX.remove(0));
+                        showingTapPointX.add(showingTapPointX.remove(0));
                     }
                 }
-                if(index < mShowingTapPointY.size()){
+                if(index < showingTapPointY.size()){
                     for(int i=0; i<index; i++){
-                        mShowingTapPointY.add(mShowingTapPointY.remove(0));
+                        showingTapPointY.add(showingTapPointY.remove(0));
                     }
                 }
             }
@@ -676,24 +626,26 @@ public class ArMeasureActivity extends AppCompatActivity {
             if(viewWidth == 0 || viewWidth == 0){
                 return;
             }
-            if (mSession == null) {
+            if (session == null) {
                 return;
             }
             // Notify ARCore session that the view size changed so that the perspective matrix and
             // the video background can be properly adjusted.
-            mDisplayRotationHelper.updateSessionIfNeeded(mSession);
+            displayRotationHelper.updateSessionIfNeeded(session);
 
             try {
+                session.setCameraTextureName(backgroundRenderer.getTextureId());
+
                 // Obtain the current frame from ARSession. When the configuration is set to
                 // UpdateMode.BLOCKING (it is by default), this will throttle the rendering to the
                 // camera framerate.
-                Frame frame = mSession.update();
+                Frame frame = session.update();
                 Camera camera = frame.getCamera();
                 // Draw background.
-                mBackgroundRenderer.draw(frame);
+                backgroundRenderer.draw(frame);
 
                 // If not tracking, don't draw 3d objects.
-                if (camera.getTrackingState() == Trackable.TrackingState.PAUSED) {
+                if (camera.getTrackingState() == TrackingState.PAUSED) {
                     return;
                 }
 
@@ -708,18 +660,18 @@ public class ArMeasureActivity extends AppCompatActivity {
 
                 // Visualize tracked points.
                 PointCloud pointCloud = frame.acquirePointCloud();
-                mPointCloud.update(pointCloud);
-                mPointCloud.draw(viewmtx, projmtx);
+                ArMeasureActivity.this.pointCloud.update(pointCloud);
+                ArMeasureActivity.this.pointCloud.draw(viewmtx, projmtx);
 
                 // Application is responsible for releasing the point cloud resources after
                 // using it.
                 pointCloud.release();
 
                 // Check if we detected at least one plane. If so, hide the loading message.
-                if (mLoadingMessageSnackbar != null) {
-                    for (Plane plane : mSession.getAllTrackables(Plane.class)) {
+                if (messageSnackbar != null) {
+                    for (Plane plane : session.getAllTrackables(Plane.class)) {
                         if (plane.getType() == com.google.ar.core.Plane.Type.HORIZONTAL_UPWARD_FACING &&
-                                plane.getTrackingState() == Plane.TrackingState.TRACKING) {
+                                plane.getTrackingState() == TrackingState.TRACKING) {
                             hideLoadingMessage();
                             break;
                         }
@@ -727,31 +679,33 @@ public class ArMeasureActivity extends AppCompatActivity {
                 }
 
                 // Visualize planes.
-                mPlaneRenderer.drawPlanes(
-                        mSession.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);
+                planeRenderer.drawPlanes(
+                        session.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);
 
                 // draw cube & line from last frame
-                if(mAnchors.size() < 1){
+                if(anchors.size() < 1){
                     // no point
                     showResult("");
                 }else{
                     // draw selected cube
                     if(nowTouchingPointIndex != DEFAULT_VALUE) {
-                        drawObj(getPose(mAnchors.get(nowTouchingPointIndex)), mCubeSelected, viewmtx, projmtx, lightIntensity);
-                        checkIfHit(mCubeSelected, nowTouchingPointIndex);
+                        drawObj(getPose(anchors.get(nowTouchingPointIndex)), cubeSelected, viewmtx, projmtx, lightIntensity);
+                        checkIfHit(cubeSelected, nowTouchingPointIndex);
                     }
                     StringBuilder sb = new StringBuilder();
                     double total = 0;
                     Pose point1;
                     // draw first cube
-                    Pose point0 = getPose(mAnchors.get(0));
-                    drawObj(point0, mCube, viewmtx, projmtx, lightIntensity);
-                    checkIfHit(mCube, 0);
+                    Pose point0 = getPose(anchors.get(0));
+                    drawObj(point0, cube, viewmtx, projmtx, lightIntensity);
+                    checkIfHit(cube, 0);
                     // draw the rest cube
-                    for(int i = 1; i < mAnchors.size(); i++){
-                        point1 = getPose(mAnchors.get(i));
-                        drawObj(point1, mCube, viewmtx, projmtx, lightIntensity);
-                        checkIfHit(mCube, i);
+                    for(int i = 1; i < anchors.size(); i++){
+                        point1 = getPose(anchors.get(i));
+                        log("onDrawFrame()", "before drawObj()");
+                        drawObj(point1, cube, viewmtx, projmtx, lightIntensity);
+                        checkIfHit(cube, i);
+                        log("onDrawFrame()", "before drawLine()");
                         drawLine(point0, point1, viewmtx, projmtx);
 
                         float distanceCm = ((int)(getDistance(point0, point1) * 1000))/10.0f;
@@ -767,31 +721,34 @@ public class ArMeasureActivity extends AppCompatActivity {
                 }
 
                 // check if there is any touch event
-                MotionEvent tap = mQueuedSingleTaps.poll();
-                if(tap != null && camera.getTrackingState() == Trackable.TrackingState.TRACKING){
+                MotionEvent tap = queuedSingleTaps.poll();
+                if(tap != null && camera.getTrackingState() == TrackingState.TRACKING){
                     for (HitResult hit : frame.hitTest(tap)) {
                         // Check if any plane was hit, and if it was hit inside the plane polygon.j
                         Trackable trackable = hit.getTrackable();
-                        if (trackable instanceof Plane
-                                && ((Plane) trackable).isPoseInPolygon(hit.getHitPose())) {
+                        // Creates an anchor if a plane or an oriented point was hit.
+                        if (trackable instanceof Plane && ((Plane) trackable).isPoseInPolygon(hit.getHitPose())
+                                || (trackable instanceof Point
+                                    && ((Point) trackable).getOrientationMode()
+                                        == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL)) {
                             // Cap the number of objects created. This avoids overloading both the
                             // rendering system and ARCore.
-                            if (mAnchors.size() >= 16) {
-                                mAnchors.get(0).detach();
-                                mAnchors.remove(0);
+                            if (anchors.size() >= 16) {
+                                anchors.get(0).detach();
+                                anchors.remove(0);
 
-                                mShowingTapPointX.remove(0);
-                                mShowingTapPointY.remove(0);
+                                showingTapPointX.remove(0);
+                                showingTapPointY.remove(0);
                             }
 
                             // Adding an Anchor tells ARCore that it should track this position in
                             // space. This anchor will be used in PlaneAttachment to place the 3d model
                             // in the correct position relative both to the world and to the plane.
-                            mAnchors.add(hit.createAnchor());
+                            anchors.add(hit.createAnchor());
 
-                            mShowingTapPointX.add(tap.getX());
-                            mShowingTapPointY.add(tap.getY());
-                            nowTouchingPointIndex = mAnchors.size() - 1;
+                            showingTapPointX.add(tap.getX());
+                            showingTapPointY.add(tap.getY());
+                            nowTouchingPointIndex = anchors.size() - 1;
 
                             showMoreAction();
                             showCubeStatus();
@@ -809,7 +766,7 @@ public class ArMeasureActivity extends AppCompatActivity {
 
         private void handleMoveEvent(int nowSelectedIndex){
             try {
-                if (mShowingTapPointX.size() < 1 || mQueuedScrollDx.size() < 2) {
+                if (showingTapPointX.size() < 1 || queuedScrollDx.size() < 2) {
                     // no action, don't move
                     return;
                 }
@@ -817,45 +774,45 @@ public class ArMeasureActivity extends AppCompatActivity {
                     // no selected cube, don't move
                     return;
                 }
-                if (nowSelectedIndex >= mShowingTapPointX.size()) {
+                if (nowSelectedIndex >= showingTapPointX.size()) {
                     // wrong index, don't move.
                     return;
                 }
                 float scrollDx = 0;
                 float scrollDy = 0;
-                int scrollQueueSize = mQueuedScrollDx.size();
+                int scrollQueueSize = queuedScrollDx.size();
                 for (int i = 0; i < scrollQueueSize; i++) {
-                    scrollDx += mQueuedScrollDx.poll();
-                    scrollDy += mQueuedScrollDy.poll();
+                    scrollDx += queuedScrollDx.poll();
+                    scrollDy += queuedScrollDy.poll();
                 }
 
                 if (isVerticalMode) {
-                    Anchor anchor = mAnchors.remove(nowSelectedIndex);
+                    Anchor anchor = anchors.remove(nowSelectedIndex);
                     anchor.detach();
                     setPoseDataToTempArray(getPose(anchor));
 //                        log(TAG, "point[" + nowSelectedIndex + "] move vertical "+ (scrollDy / viewHeight) + ", tY=" + tempTranslation[1]
 //                                + ", new tY=" + (tempTranslation[1] += (scrollDy / viewHeight)));
                     tempTranslation[1] += (scrollDy / viewHeight);
-                    mAnchors.add(nowSelectedIndex,
-                            mSession.createAnchor(new Pose(tempTranslation, tempRotation)));
+                    anchors.add(nowSelectedIndex,
+                            session.createAnchor(new Pose(tempTranslation, tempRotation)));
                 } else {
-                    float toX = mShowingTapPointX.get(nowSelectedIndex) - scrollDx;
-                    mShowingTapPointX.remove(nowSelectedIndex);
-                    mShowingTapPointX.add(nowSelectedIndex, toX);
+                    float toX = showingTapPointX.get(nowSelectedIndex) - scrollDx;
+                    showingTapPointX.remove(nowSelectedIndex);
+                    showingTapPointX.add(nowSelectedIndex, toX);
 
-                    float toY = mShowingTapPointY.get(nowSelectedIndex) - scrollDy;
-                    mShowingTapPointY.remove(nowSelectedIndex);
-                    mShowingTapPointY.add(nowSelectedIndex, toY);
+                    float toY = showingTapPointY.get(nowSelectedIndex) - scrollDy;
+                    showingTapPointY.remove(nowSelectedIndex);
+                    showingTapPointY.add(nowSelectedIndex, toY);
 
-                    if (mAnchors.size() > nowSelectedIndex) {
-                        Anchor anchor = mAnchors.remove(nowSelectedIndex);
+                    if (anchors.size() > nowSelectedIndex) {
+                        Anchor anchor = anchors.remove(nowSelectedIndex);
                         anchor.detach();
                         // remove duplicated anchor
                         setPoseDataToTempArray(getPose(anchor));
                         tempTranslation[0] -= (scrollDx / viewWidth);
                         tempTranslation[2] -= (scrollDy / viewHeight);
-                        mAnchors.add(nowSelectedIndex,
-                                mSession.createAnchor(new Pose(tempTranslation, tempRotation)));
+                        anchors.add(nowSelectedIndex,
+                                session.createAnchor(new Pose(tempTranslation, tempRotation)));
                     }
                 }
             } catch (NotTrackingException e) {
@@ -880,7 +837,7 @@ public class ArMeasureActivity extends AppCompatActivity {
         private void drawLine(Pose pose0, Pose pose1, float[] viewmtx, float[] projmtx){
             float lineWidth = 0.002f;
             float lineWidthH = lineWidth / viewHeight * viewWidth;
-            mRectRenderer.setVerts(
+            rectRenderer.setVerts(
                     pose0.tx() - lineWidth, pose0.ty() + lineWidthH, pose0.tz() - lineWidth,
                     pose0.tx() + lineWidth, pose0.ty() + lineWidthH, pose0.tz() + lineWidth,
                     pose1.tx() + lineWidth, pose1.ty() + lineWidthH, pose1.tz() + lineWidth,
@@ -892,20 +849,20 @@ public class ArMeasureActivity extends AppCompatActivity {
                     pose1.tx() - lineWidth, pose1.ty() - lineWidthH, pose1.tz() - lineWidth
             );
 
-            mRectRenderer.draw(viewmtx, projmtx);
+            rectRenderer.draw(viewmtx, projmtx);
         }
 
         private void drawObj(Pose pose, ObjectRenderer renderer, float[] cameraView, float[] cameraPerspective, float lightIntensity){
-            pose.toMatrix(mAnchorMatrix, 0);
-            renderer.updateModelMatrix(mAnchorMatrix, 1);
+            pose.toMatrix(anchorMatrix, 0);
+            renderer.updateModelMatrix(anchorMatrix, 1);
             renderer.draw(cameraView, cameraPerspective, lightIntensity);
         }
 
         private void checkIfHit(ObjectRenderer renderer, int cubeIndex){
-            if(isMVPMatrixHitMotionEvent(renderer.getModelViewProjectionMatrix(), mQueuedLongPress.peek())){
+            if(isMVPMatrixHitMotionEvent(renderer.getModelViewProjectionMatrix(), queuedLongPress.peek())){
                 // long press hit a cube, show context menu for the cube
                 nowTouchingPointIndex = cubeIndex;
-                mQueuedLongPress.poll();
+                queuedLongPress.poll();
                 showMoreAction();
                 showCubeStatus();
                 runOnUiThread(new Runnable() {
@@ -914,9 +871,9 @@ public class ArMeasureActivity extends AppCompatActivity {
                         fab.performClick();
                     }
                 });
-            }else if(isMVPMatrixHitMotionEvent(renderer.getModelViewProjectionMatrix(), mQueuedSingleTaps.peek())){
+            }else if(isMVPMatrixHitMotionEvent(renderer.getModelViewProjectionMatrix(), queuedSingleTaps.peek())){
                 nowTouchingPointIndex = cubeIndex;
-                mQueuedSingleTaps.poll();
+                queuedSingleTaps.poll();
                 showMoreAction();
                 showCubeStatus();
             }
@@ -996,11 +953,11 @@ public class ArMeasureActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     int nowSelectIndex = glSerfaceRenderer.getNowTouchingPointIndex();
-                    for(int i=0; i<ivCubeIconList.length && i<mAnchors.size(); i++){
+                    for(int i = 0; i<ivCubeIconList.length && i< anchors.size(); i++){
                         ivCubeIconList[i].setEnabled(true);
                         ivCubeIconList[i].setActivated(i == nowSelectIndex);
                     }
-                    for(int i=mAnchors.size(); i<ivCubeIconList.length; i++){
+                    for(int i = anchors.size(); i<ivCubeIconList.length; i++){
                         ivCubeIconList[i].setEnabled(false);
                     }
                 }
