@@ -22,14 +22,13 @@ android {
         // 24 is the minimum since ARCore only works with 24 and higher.
         minSdkVersion 24
         targetSdkVersion 27
-        versionCode 12
-        versionName "1.5"
+        versionCode 13
+        versionName "1.6"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
-        // 2018/01/16 arcore preview 2 crash immediately with minifyEnabled true
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
 
