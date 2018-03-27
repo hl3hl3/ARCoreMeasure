@@ -15,11 +15,9 @@ import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.PopupWindow;
@@ -67,7 +65,7 @@ import io.fabric.sdk.android.Fabric;
  */
 
 public class ArMeasureActivity extends AppCompatActivity {
-    private static final String TAG = "ArRulerActivity";
+    private static final String TAG = ArMeasureActivity.class.getSimpleName();
     private static final String ASSET_NAME_CUBE_OBJ = "cube.obj";
     private static final String ASSET_NAME_CUBE = "cube_green.png";
     private static final String ASSET_NAME_CUBE_SELECTED = "cube_cyan.png";
@@ -245,9 +243,6 @@ public class ArMeasureActivity extends AppCompatActivity {
             return;
         }
         surfaceView = findViewById(R.id.surfaceview);
-//        surfaceView = new GLSurfaceView(this);
-//        FrameLayout flContent = findViewById(R.id.fl_content);
-//        flContent.addView(surfaceView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         // Set up tap listener.
         gestureDetector = new GestureDetector(this, gestureDetectorListener);

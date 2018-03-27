@@ -1,15 +1,5 @@
 <resources>
     <string name="app_name">ARCoreMeasure</string>
-    <string name="alert_message">To prepare your device, please install the ARCore Service.</string>
-    <string name="alert_support">Support Devices:
-\n•  Google Pixel and Pixel XL
-\n•  Samsung Galaxy S8 (SM-G950U, SM-G950N, SM-G950F, SM-G950FD, SM-G950W, SM-G950U1)
-\nhttps://developers.google.com/ar/discover/</string>
-    <string name="alert_download">Download ARCore Service Preview2.</string>
-    <string name="alert_download_link">https://github.com/google-ar/arcore-android-sdk/releases/download/sdk-preview2/arcore-preview2.apk</string>
-    <string name="alert_info">More info about ARCore setup.</string>
-    <string name="alert_info_link">https://developers.google.com/ar/develop/java/getting-started</string>
-    <string name="alert_do_not_show">I have downloaded and installed ARCore Preview2, do not show this alert again.</string>
     <string name="ok">OK</string>
 
     <string name="need_permission">Camera permission is needed to run this application</string>
