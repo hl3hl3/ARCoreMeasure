@@ -1,18 +1,6 @@
-buildscript {
-    repositories {
-        maven { url 'https://maven.fabric.io/public' }
-    }
-
-    dependencies {
-        classpath 'io.fabric.tools:gradle:1.+'
-    }
-}
 apply plugin: 'com.android.application'
-apply plugin: 'io.fabric'
-
-repositories {
-    maven { url 'https://maven.fabric.io/public' }
-}
+apply plugin: 'com.google.gms.google-services'
+apply plugin: 'com.google.firebase.crashlytics'
 
 
 android {
@@ -23,13 +11,26 @@ android {
         minSdkVersion 24
         targetSdkVersion 28
         versionCode 13
-        versionName "1.6"
+        versionName "1.6.1"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildTypes {
+        debug {
+            minifyEnabled true
+            firebaseCrashlytics {
+                // If you don't need crash reporting for your debug build,
+                // you can speed up your build by disabling mapping file uploading.
+                mappingFileUploadEnabled false
+            }
+        }
+
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // When minifyEnabled is set to true, Crashlytics automatically
+            // uploads mapping files because the plugin detects that obfuscation
+            // is enabled. mappingFileUploadEnabled defaults to true if
+            // minifyEnabled is true.
         }
 
         lintOptions {
@@ -53,7 +54,11 @@ dependencies {
     implementation 'de.javagl:obj:0.2.1'
     implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'com.google.android.material:material:1.0.0'
-    compile('com.crashlytics.sdk.android:crashlytics:2.6.8@aar') {
-        transitive = true;
-    }
+    // https://firebase.google.com/docs/crashlytics/upgrade-sdk?platform=android
+    implementation 'com.google.firebase:firebase-crashlytics:17.3.1'
+    implementation platform('com.google.firebase:firebase-bom:26.5.0')
+    implementation 'com.google.firebase:firebase-analytics:18.0.2'
+//    compile('com.crashlytics.sdk.android:crashlytics:2.6.8@aar') {
+//        transitive = true;
+//    }
 }

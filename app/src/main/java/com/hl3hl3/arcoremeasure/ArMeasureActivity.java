@@ -24,7 +24,6 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.crashlytics.android.Crashlytics;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.ArCoreApk;
 import com.google.ar.core.Camera;
@@ -49,6 +48,7 @@ import com.google.ar.core.exceptions.UnavailableApkTooOldException;
 import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.hl3hl3.arcoremeasure.renderer.RectanglePolygonRenderer;
 
 import java.io.IOException;
@@ -57,8 +57,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
-
-import io.fabric.sdk.android.Fabric;
 
 /**
  * Created by user on 2017/9/25.
@@ -128,9 +126,13 @@ public class ArMeasureActivity extends AppCompatActivity {
         }
     }
 
+    private FirebaseCrashlytics firebaseCrashlytics;
+
     private void log(Exception e){
         try {
-            Crashlytics.logException(e);
+            if (firebaseCrashlytics != null) {
+                firebaseCrashlytics.recordException(e);
+            }
             if (BuildConfig.DEBUG) {
                 e.printStackTrace();
             }
@@ -143,7 +145,9 @@ public class ArMeasureActivity extends AppCompatActivity {
 
     private void logStatus(String msg){
         try {
-            Crashlytics.log(msg);
+            if (firebaseCrashlytics != null) {
+                firebaseCrashlytics.log(msg);
+            }
         }catch (Exception e){
             log(e);
         }
@@ -186,7 +190,7 @@ public class ArMeasureActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Fabric.with(this, new Crashlytics());
+        firebaseCrashlytics = FirebaseCrashlytics.getInstance();
         setContentView(R.layout.activity_main);
 
 //        overlayViewForTest = (OverlayView)findViewById(R.id.overlay_for_test);
