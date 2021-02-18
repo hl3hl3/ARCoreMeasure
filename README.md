@@ -6,10 +6,10 @@ Google play: https://play.google.com/store/apps/details?id=com.hl3hl3.arcoremeas
 demo video: (Measure the belly of my cat with ARCore) https://youtu.be/-7hDq9rnzjI
 
 # Important
-Before you build and run this project, please 
+Before you build and run this project, please check
 
-* change the **Fabric ApiKey** in **AndroidManifest.xml**
-* change the **apiSecret** in **fabric.properties**
+* app/google-services.json file
+https://firebase.google.com/docs/crashlytics/start-using-analytics?platform=android
 
 
 # License
